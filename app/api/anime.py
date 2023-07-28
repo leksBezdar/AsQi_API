@@ -13,9 +13,11 @@ router = APIRouter()
 @router.post("/animes/", response_model=schemas.AnimeCreate)
 async def create_anime(
     anime_data: schemas.AnimeCreate,
-    session: AsyncSession = Depends(get_async_session),
+    db: AsyncSession = Depends(get_async_session),
 ):
-    return await crud.create_anime(session, anime_data)
+    if  await crud.read_anime_by_id(db=db, title=anime_data.title):
+        raise HTTPException(status_code=409, detail='Title already exists or item conflict')
+    return await crud.create_anime(db, anime_data)
 
 
 @router.post("/animes/{anime_id}/episodes/", response_model=schemas.Episode)
