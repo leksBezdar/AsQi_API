@@ -6,12 +6,34 @@ class AnimeBase(BaseModel):
     trailer_link: str
     num_episodes: int
     synopsis: str
+    japanese_title: str
+    country: str
+    year: int
+    genres: str
+    rating: str
+    type: str
+    status: str
+    studio: str
+    MPAA: str
+    type: str
+    duration: int
 
 class AnimeCreate(BaseModel):
     title: str
     trailer_link: str
     num_episodes: int
     synopsis: str
+    japanese_title: str
+    country: str
+    year: int
+    genres: str
+    rating: str
+    type: str
+    status: str
+    studio: str
+    MPAA: str
+    type: str
+    duration: int
 
 class Anime(AnimeBase):
     id: int
@@ -22,6 +44,7 @@ class Anime(AnimeBase):
 class EpisodeBase(BaseModel):
     episode_title: str
     episode_link: str
+    translations: dict
 
 class EpisodeCreate(EpisodeBase):
     pass

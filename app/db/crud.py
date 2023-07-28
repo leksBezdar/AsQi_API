@@ -12,7 +12,17 @@ async def create_anime(db: AsyncSession, anime: schemas.AnimeCreate):
         title=anime.title,
         trailer_link=anime.trailer_link,
         num_episodes=anime.num_episodes,
-        synopsis=anime.synopsis
+        synopsis=anime.synopsis,
+        japanese_title = anime.japanese_title, 
+        country = anime.country, 
+        year = anime.year, 
+        genres = anime.genres, 
+        rating = anime.rating, 
+        type = anime.type, 
+        status = anime.status, 
+        studio = anime.studio, 
+        MPAA = anime.MPAA,  
+        duration = anime.duration,    
     )
     db.add(db_anime)
     await db.commit()
@@ -24,7 +34,8 @@ async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.Episo
     db_episode = Episode(
         episode_title=episode.episode_title,
         episode_link=episode.episode_link,
-        anime_id=anime_id
+        anime_id=anime_id,
+        translations = episode.translations,
     )
     db.add(db_episode)
     await db.commit()
