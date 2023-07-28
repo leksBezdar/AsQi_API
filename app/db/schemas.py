@@ -28,11 +28,6 @@ class EpisodeCreate(EpisodeBase):
 
 class Episode(EpisodeBase):
     id: int
-    anime_id: int
 
     class Config:
         from_attributes = True
-
-class AnimeMetadata(BaseModel):
-    title: str
-    synopsis: str

@@ -3,18 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import or_
 from sqlalchemy.future import select
 
-from .models import Anime
-from .schemas import AnimeCreate
+from .models import Anime, Episode
+from . import schemas
 
 
-# async def create_anime(session: AsyncSession, anime_data: AnimeCreate) -> Anime:
-#     anime = Anime(**anime_data.model_dump())
-#     session.add(anime)
-#     await session.flush()
-#     return anime
-
-
-async def create_anime(db: AsyncSession, anime: AnimeCreate):
+async def create_anime(db: AsyncSession, anime: schemas.AnimeCreate):
     db_anime = Anime(
         title=anime.title,
         trailer_link=anime.trailer_link,
@@ -27,7 +20,20 @@ async def create_anime(db: AsyncSession, anime: AnimeCreate):
     return db_anime
 
 
-async def get_anime_by_id(db: AsyncSession, anime_id: int = None, title: str = None):
+async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.EpisodeCreate):
+    db_episode = Episode(
+        episode_title=episode.episode_title,
+        episode_link=episode.episode_link,
+        anime_id=anime_id
+    )
+    db.add(db_episode)
+    await db.commit()
+    await db.refresh(db_episode)
+    return db_episode
+
+
+
+async def read_anime_by_id(db: AsyncSession, anime_id: int = None, title: str = None):
     if not anime_id and not title:
         raise ValueError("Either 'anime_id' or 'title' must be provided.")
 
@@ -45,3 +51,18 @@ async def get_anime_by_id(db: AsyncSession, anime_id: int = None, title: str = N
             )
 
     return anime
+
+
+async def read_all_animes(db: AsyncSession, skip: int = 0, limit: int = 10):
+    stmt = select(Anime).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+async def read_all_episodes_for_anime(db: AsyncSession, anime_id: int, skip: int = 0, limit: int = 10):
+    stmt = select(Episode).where(Episode.anime_id == anime_id).offset(skip).limit(limit)
+    result = await db.execute(stmt)
+    return result.scalars().all()
+
+
+    
