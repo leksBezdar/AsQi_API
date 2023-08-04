@@ -30,7 +30,6 @@ class Anime(Base):
     
     
     episodes = relationship("Episode", back_populates="anime")
-    img = relationship("Image", back_populates="anime", uselist=False)
 
 
 class Episode(Base):

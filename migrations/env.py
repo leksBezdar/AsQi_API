@@ -8,10 +8,10 @@ from alembic import context
 import os
 import sys
 
-sys.path.append(os.path.join(sys.path[0], 'app'))
+sys.path.append(os.path.join(sys.path[0], 'srx'))
 
-from app.config import DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_PASS
-from app.db.models import metadata
+from src.config import DB_HOST, DB_PORT, DB_USER, DB_NAME, DB_PASS
+from src.db.models import metadata
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

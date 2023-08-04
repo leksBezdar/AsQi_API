@@ -1,6 +1,5 @@
-# app/main.py
 from fastapi import FastAPI
-from app.api import anime
+from .api import anime
 
 app = FastAPI(
     title='AsQi'

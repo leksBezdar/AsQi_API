@@ -7,7 +7,7 @@ from .models import Anime, Episode
 from . import schemas
 
 
-async def create_anime(db: AsyncSession, anime: schemas.AnimeCreate):
+async def create_anime(db: AsyncSession, anime: schemas.AnimeBase):
     db_anime = Anime(
         title=anime.title,
         trailer_link=anime.trailer_link,
@@ -22,7 +22,10 @@ async def create_anime(db: AsyncSession, anime: schemas.AnimeCreate):
         status = anime.status, 
         studio = anime.studio, 
         MPAA = anime.MPAA,  
-        duration = anime.duration,    
+        duration = anime.duration,
+        small_img = anime.small_img,
+        big_img = anime.big_img,
+        screens = anime.screens,
     )
     db.add(db_anime)
     await db.commit()
@@ -30,7 +33,7 @@ async def create_anime(db: AsyncSession, anime: schemas.AnimeCreate):
     return db_anime
 
 
-async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.EpisodeCreate):
+async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.EpisodeBase):
     db_episode = Episode(
         episode_title=episode.episode_title,
         episode_link=episode.episode_link,
@@ -43,8 +46,15 @@ async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.Episo
     return db_episode
 
 
-
-async def read_anime_by_id(db: AsyncSession, anime_id: int = None, title: str = None):
+async def check_existing_anime(db: AsyncSession, title: str):
+    stmt = select(Anime).where(Anime.title == title)
+    result = await db.execute(stmt)
+    anime = result.scalar_one_or_none()
+    return anime
+    
+    
+    
+async def read_anime_by_id_or_title(db: AsyncSession, anime_id: int = None, title: str = None):
     if not anime_id and not title:
         raise ValueError("Either 'anime_id' or 'title' must be provided.")
 
