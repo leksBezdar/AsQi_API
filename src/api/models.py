@@ -11,8 +11,8 @@ class Anime(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True, nullable=False, unique=True)
-    japanese_title = Column(String, index=True, nullable=False)
-    trailer_link = Column(String, nullable=False)
+    japanese_title = Column(String, index=True, nullable=False, unique=True)
+    trailer_link = Column(String, nullable=False, unique=True)
     num_episodes = Column(Integer, nullable=False)
     synopsis = Column(String, nullable=False)
     country = Column(String, nullable=False)
@@ -24,9 +24,9 @@ class Anime(Base):
     studio = Column(String, nullable=False)
     MPAA = Column(String, nullable=False)
     duration = Column(Integer, nullable=False)
-    big_img = Column(String, nullable=False)
-    small_img = Column(String, nullable=False)
-    screens = Column(JSON, nullable=False)
+    big_img = Column(String, nullable=False, unique=True)
+    small_img = Column(String, nullable=False, unique=True)
+    screens = Column(JSON, nullable=False, unique=True)
     
     
     episodes = relationship("Episode", back_populates="anime")
@@ -36,8 +36,8 @@ class Episode(Base):
     __tablename__ = "episodes"
 
     id = Column(Integer, primary_key=True, index=True)
-    episode_title = Column(String, index=True, nullable=False)
-    episode_link = Column(String, nullable=False)
+    episode_title = Column(String, index=True, nullable=False, unique=True)
+    episode_link = Column(String, nullable=False, unique=True)
     anime_id = Column(Integer, ForeignKey("animes.id"))
     translations = Column(JSON, nullable=False)
 

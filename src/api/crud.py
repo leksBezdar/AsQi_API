@@ -30,6 +30,7 @@ async def create_anime(db: AsyncSession, anime: schemas.AnimeBase):
     db.add(db_anime)
     await db.commit()
     await db.refresh(db_anime)
+    
     return db_anime
 
 
@@ -43,13 +44,16 @@ async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.Episo
     db.add(db_episode)
     await db.commit()
     await db.refresh(db_episode)
+    
     return db_episode
 
 
 async def check_existing_anime(db: AsyncSession, title: str):
     stmt = select(Anime).where(Anime.title == title)
+    
     result = await db.execute(stmt)
     anime = result.scalar_one_or_none()
+    
     return anime
     
     
@@ -76,13 +80,17 @@ async def read_anime_by_id_or_title(db: AsyncSession, anime_id: int = None, titl
 
 async def read_all_animes(db: AsyncSession, skip: int = 0, limit: int = 10):
     stmt = select(Anime).offset(skip).limit(limit)
+    
     result = await db.execute(stmt)
+    
     return result.scalars().all()
 
 
 async def read_all_episodes_for_anime(db: AsyncSession, anime_id: int, skip: int = 0, limit: int = 10):
     stmt = select(Episode).where(Episode.anime_id == anime_id).offset(skip).limit(limit)
+    
     result = await db.execute(stmt)
+    
     return result.scalars().all()
 
 

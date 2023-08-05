@@ -1,4 +1,5 @@
 from pydantic import BaseModel
+from typing import Dict
     
 
 class AnimeBase(BaseModel):
@@ -9,7 +10,7 @@ class AnimeBase(BaseModel):
     japanese_title: str
     country: str
     year: int
-    genres: dict
+    genres: Dict
     rating: str
     status: str
     studio: str
@@ -18,7 +19,7 @@ class AnimeBase(BaseModel):
     type: str
     small_img: str
     big_img: str
-    screens: dict 
+    screens: Dict 
     
 
 class Anime(AnimeBase):
@@ -33,12 +34,13 @@ class Anime(AnimeBase):
 class EpisodeBase(BaseModel):
     episode_title: str
     episode_link: str
-    translations: dict
+    translations: Dict
     
 
 
 class Episode(EpisodeBase):
     id: int
+    anime_id: int
 
     class Config:
         from_attributes = True
