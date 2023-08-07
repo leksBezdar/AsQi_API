@@ -1,3 +1,5 @@
+import random
+import string
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, update
@@ -24,16 +26,22 @@ async def create_user(db: AsyncSession, user: schemas.UserBase):
 
 
 async def get_user_by_email(db: AsyncSession, user_email: str):
+    
+    """ Возвращает информацию о пользователе по email """
+    
     stmt = select(User).where(User.email == user_email)
     
     result = await db.execute(stmt)
-    is_exist = bool(result.scalar_one_or_none())
-    
-    return is_exist
+    user = result.scalar_one_or_none()
+     
+    return user
 
 
 
 async def get_user_by_username(db: AsyncSession, username: str):
+    
+    """ Возвращает информацию о пользователе по имени """
+    
     stmt = select(User).where(User.username == username)
     
     result = await db.execute(stmt)
@@ -44,6 +52,9 @@ async def get_user_by_username(db: AsyncSession, username: str):
 
 
 async def get_existing_user(db: AsyncSession, email: str, username: str):
+    
+    """ Проверка на существующего пользователя """
+    
     email_exists = await get_user_by_email(db, email)
     username_exists = await get_user_by_username(db, username)
     
@@ -64,6 +75,9 @@ async def create_role(db: AsyncSession, role: schemas.RoleBase):
 
 
 async def check_existing_role(db: AsyncSession, role_name: str):
+    
+    """ Возвращает информацию о существующей роли пользователе """
+    
     query = select(Role).where(Role.name == role_name)
     
     result = await db.execute(query)
@@ -73,6 +87,9 @@ async def check_existing_role(db: AsyncSession, role_name: str):
 
 
 async def get_role_by_id(db: AsyncSession, role_id: int):
+    
+    """ Возвращает информацию о пользователе по айди"""
+    
     query = select(Role.name).where(Role.id == role_id)
     
     result = await db.execute(query)
@@ -82,6 +99,9 @@ async def get_role_by_id(db: AsyncSession, role_id: int):
 
 
 async def update_user_role(db: AsyncSession, user_id: int, new_role_id: int):
+    
+    """ Меняет роль пользователя """
+    
     stmt = update(User).where(User.id == user_id).values(role_id=new_role_id)
     await db.execute(stmt)
       
@@ -99,10 +119,14 @@ async def read_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
     result = await db.execute(query)
     
     return result.scalars().all()
+
+
+def get_random_string(length=12):
+    
+    """ Генерирует случайную строку, использующуюся как соль """
+    
+    return "".join(random.choice(string.ascii_letters) for _ in range(length))
     
     
-    
-    
-    
-    
+
     
