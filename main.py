@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from src.api.anime import router as anime_router
-from src.registration.main import router as registration_router
+from src.auth.routers import router as auth_router
 
 app = FastAPI(
     title='AsQi'
 )
 
 app.include_router(anime_router, prefix="/animes", tags=["animes"])
-app.include_router(registration_router, prefix="/registration", tags=["registration"])
+app.include_router(auth_router, prefix="/registration", tags=["registration"])
