@@ -66,6 +66,7 @@ def upgrade() -> None:
         sa.Column('username', sa.String(), nullable=False),
         sa.Column('hashed_password', sa.String(), nullable=False),
         sa.Column('role_id', sa.Integer(), sa.ForeignKey('roles.id')),
+        sa.Column('refresh_token', sa.String(), nullable=True),
         sa.Column('is_active', sa.Boolean(), nullable=False, default=True),
         sa.Column('is_superuser', sa.Boolean(), nullable=False, default=False),
         sa.Column('is_verified', sa.Boolean(), nullable=False, default=False),

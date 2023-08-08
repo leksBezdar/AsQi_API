@@ -1,13 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
+import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Any, List, Dict
+
+from .config import ALGORITHM, SECRET_KEY
 
 
 from . import crud
 from . import schemas 
 from ..database import get_async_session
-from .auth import create_access_token, hash_password, validate_password
+from .auth import create_tokens, hash_password, validate_password
 
 
 router = APIRouter()
@@ -85,12 +89,41 @@ async def login(
     if not user or not validate_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
-    access_token = create_access_token(data={"sub": user.username})
-    user_dict = {
-        "id": user.id,
-        "email": user.email,
-        "username": user.username,
+    access_token, refresh_token = create_tokens(user)
+    
+    # Устанавливаем access токен как куку
+    response = JSONResponse(content={
+        "message": "Login successful",
         "access_token": access_token,
-    }
+        "refresh_token": refresh_token,
+    })
+    response.set_cookie(key="access_token", value=access_token, httponly=True)
+    
+    return response
 
-    return {"user": user_dict}
+
+@router.post("/refresh-tokens/", response_model=Dict[str, Any])
+async def refresh_tokens(
+    refresh_token: str,
+    db: AsyncSession = Depends(get_async_session),
+):
+    try:
+        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        if username is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        
+        user = crud.get_user_by_username(db, username)
+        if user is None or user.refresh_token != refresh_token:
+            raise HTTPException(status_code=401, detail="Invalid token")
+
+        access_token, new_refresh_token = create_tokens(user)
+        user.refresh_token = new_refresh_token
+        await db.commit()
+
+        return {"access_token": access_token, "refresh_token": new_refresh_token}
+
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token has expired")
+    except jwt.DecodeError:
+        raise HTTPException(status_code=401, detail="Invalid token")
