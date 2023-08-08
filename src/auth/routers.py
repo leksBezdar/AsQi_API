@@ -1,15 +1,17 @@
+import jwt
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
-import jwt
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from typing import Any, List, Dict
 
 from .config import ALGORITHM, SECRET_KEY
 
 
-from . import crud
-from . import schemas 
+from . import crud, schemas, auth
 from ..database import get_async_session
 from .auth import create_tokens, hash_password, validate_password
 
@@ -31,7 +33,7 @@ async def create_user(
        raise HTTPException(status_code=409, detail='User already exists') 
    
     # Хеширование пароля перед сохранением
-    salt = crud.get_random_string()
+    salt = auth.get_random_string()
     hashed_password = hash_password(user_data.hashed_password, salt)
     user_data.hashed_password = f"{salt}${hashed_password}"
     
@@ -61,25 +63,6 @@ async def create_role(
     return await crud.create_role(db, role_data)
 
 
-@router.patch("/update_user_role/")
-async def patch_user_role(
-    user_id: int,
-    new_role_id: int,
-    db: AsyncSession = Depends(get_async_session),
-):
-    return await crud.update_user_role(db, user_id, new_role_id)
-
-
-@router.get("/get_all_users", response_model=List[schemas.User])
-async def get_all_users(
-    skip: int = 0,
-    limit: int = 10,
-    db: AsyncSession = Depends(get_async_session)
-):
-    return await crud.read_all_users(db=db, skip=skip, limit=limit)
-
-
-
 @router.post("/login/", response_model=Dict[str, Any])
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
@@ -91,6 +74,8 @@ async def login(
 
     access_token, refresh_token = create_tokens(user)
     
+    await crud.patch_refresh_token(db, user, refresh_token)
+
     # Устанавливаем access токен как куку
     response = JSONResponse(content={
         "message": "Login successful",
@@ -113,17 +98,58 @@ async def refresh_tokens(
         if username is None:
             raise HTTPException(status_code=401, detail="Invalid token")
         
-        user = crud.get_user_by_username(db, username)
+        user = await crud.get_user_by_username(db, username)
         if user is None or user.refresh_token != refresh_token:
             raise HTTPException(status_code=401, detail="Invalid token")
 
-        access_token, new_refresh_token = create_tokens(user)
-        user.refresh_token = new_refresh_token
-        await db.commit()
+        access_token = create_tokens(user)[0]
 
-        return {"access_token": access_token, "refresh_token": new_refresh_token}
+        return {"access_token": access_token}
 
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token has expired")
     except jwt.DecodeError:
         raise HTTPException(status_code=401, detail="Invalid token")
+
+
+
+@router.get("/read_user_by_username")
+async def get_user_by_username(
+    username: str,
+    db: AsyncSession = Depends(get_async_session),
+):
+    return await crud.get_user_by_username(db, username)
+
+
+@router.get("/read_user_by_email")
+async def get_user_by_email(
+    email: str,
+    db: AsyncSession = Depends(get_async_session),
+):
+    return await crud.get_user_by_username(db, email)
+
+
+@router.get("/read_user_by_id")
+async def get_user_by_id(
+    user_id: int,
+    db: AsyncSession = Depends(get_async_session),
+):
+    return await crud.get_user_by_id(db, user_id)
+
+
+@router.get("/read_all_users", response_model=List[schemas.UserBase])
+async def get_all_users(
+    skip: int = 0,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_async_session)
+):
+    return await crud.read_all_users(db=db, skip=skip, limit=limit)
+
+    
+@router.patch("/update_user_role/")
+async def patch_user_role(
+    user_id: int,
+    new_role_id: int,
+    db: AsyncSession = Depends(get_async_session),
+):
+    return await crud.update_user_role(db, user_id, new_role_id)

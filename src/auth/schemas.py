@@ -2,7 +2,6 @@ from pydantic import BaseModel
 from typing import Dict
 
 class UserBase(BaseModel):
-    role_id: int
     email: str
     username: str
     hashed_password: str
@@ -15,6 +14,7 @@ class UserCreate(UserBase):
 
 class User(UserBase):
     id: int
+    refresh_token:str
     
 
 class RoleBase(BaseModel):

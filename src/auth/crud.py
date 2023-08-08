@@ -1,11 +1,10 @@
-import random
-import string
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, update
 
 from .models import User, Role
 from . import schemas
+from . import models
 
 
 async def create_user(db: AsyncSession, user: schemas.UserBase):
@@ -16,13 +15,25 @@ async def create_user(db: AsyncSession, user: schemas.UserBase):
         is_active=user.is_active,                
         is_superuser=user.is_superuser, 
         is_verified=user.is_verified,
-        role_id=user.role_id,
     )  
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
     
     return db_user
+
+
+async def create_role(db: AsyncSession, role: schemas.RoleBase):
+    db_role = Role(
+        name=role.name,
+        is_active_subscription=role.is_active_subscription,
+        permissions=role.permissions,
+    )
+    db.add(db_role)
+    await db.commit()
+    await db.refresh(db_role)
+    
+    return db_role
 
 
 async def get_user_by_email(db: AsyncSession, user_email: str):
@@ -50,6 +61,17 @@ async def get_user_by_username(db: AsyncSession, username: str):
     return user
 
 
+async def get_user_by_id(db: AsyncSession, id: int):
+    
+    """ Возвращает информацию о пользователе по имени """
+    
+    stmt = select(User).where(User.id == id)
+    
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    return user
+
 
 async def get_existing_user(db: AsyncSession, email: str, username: str):
     
@@ -60,18 +82,6 @@ async def get_existing_user(db: AsyncSession, email: str, username: str):
     
     return email_exists or username_exists
 
-
-async def create_role(db: AsyncSession, role: schemas.RoleBase):
-    db_role = Role(
-        name=role.name,
-        is_active_subscription=role.is_active_subscription,
-        permissions=role.permissions,
-    )
-    db.add(db_role)
-    await db.commit()
-    await db.refresh(db_role)
-    
-    return db_role
 
 
 async def check_existing_role(db: AsyncSession, role_name: str):
@@ -98,6 +108,20 @@ async def get_role_by_id(db: AsyncSession, role_id: int):
     return role_name
 
 
+async def read_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
+    query = select(User).offset(skip).limit(limit)
+    
+    result = await db.execute(query)
+    
+    return result.scalars().all()
+
+
+async def patch_refresh_token(db: AsyncSession, user: models.User, new_refresh_token: str):
+    user.refresh_token = new_refresh_token
+    await db.commit()
+    return user
+
+
 async def update_user_role(db: AsyncSession, user_id: int, new_role_id: int):
     
     """ Меняет роль пользователя """
@@ -111,21 +135,6 @@ async def update_user_role(db: AsyncSession, user_id: int, new_role_id: int):
     new_user_data = result.scalar_one_or_none()
     
     return new_user_data
-
-
-async def read_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
-    query = select(User).offset(skip).limit(limit)
-    
-    result = await db.execute(query)
-    
-    return result.scalars().all()
-
-
-def get_random_string(length=12):
-    
-    """ Генерирует случайную строку, использующуюся как соль """
-    
-    return "".join(random.choice(string.ascii_letters) for _ in range(length))
     
     
 
