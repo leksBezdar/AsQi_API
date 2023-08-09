@@ -11,7 +11,7 @@ from typing import Any, List, Dict
 from .config import ALGORITHM, SECRET_KEY
 
 
-from . import crud, schemas, auth
+from . import crud, schemas, auth, exceptions
 from ..database import get_async_session
 from .auth import create_tokens, hash_password, validate_password
 
@@ -22,7 +22,7 @@ router = APIRouter()
 
 @router.post("/registration/", response_model=Dict[str, Any])
 async def create_user(
-    user_data: schemas.UserBase,
+    user_data: schemas.UserCreate,
     db: AsyncSession = Depends(get_async_session),
 ):
     if await crud.get_existing_user(
@@ -30,7 +30,7 @@ async def create_user(
         email=user_data.email,
         username=user_data.username,
     ):
-       raise HTTPException(status_code=409, detail='User already exists') 
+       raise exceptions.UserAlreadyExists
    
     # Хеширование пароля перед сохранением
     salt = auth.get_random_string()
@@ -54,11 +54,11 @@ async def create_role(
     role_data: schemas.RoleBase,
     db: AsyncSession = Depends(get_async_session),
 ):
-    if await crud.check_existing_role(
+    if await crud.get_existing_role(
         db=db,
         role_name=role_data.name
     ):
-        raise HTTPException(status_code=409, detail='Role already exists') 
+        raise exceptions.RoleAlreadyExists
     
     return await crud.create_role(db, role_data)
 
@@ -70,7 +70,7 @@ async def login(
 ):
     user = await crud.get_user_by_username(db, form_data.username)
     if not user or not validate_password(form_data.password, user.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+        raise exceptions.InvalidCredentials
 
     access_token, refresh_token = create_tokens(user)
     
@@ -87,8 +87,8 @@ async def login(
     return response
 
 
-@router.post("/refresh-tokens/", response_model=Dict[str, Any])
-async def refresh_tokens(
+@router.post("/update_access_token/", response_model=Dict[str, Any])
+async def update_access_token(
     refresh_token: str,
     db: AsyncSession = Depends(get_async_session),
 ):
@@ -96,20 +96,30 @@ async def refresh_tokens(
         payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         if username is None:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise exceptions.InvalidToken
         
         user = await crud.get_user_by_username(db, username)
         if user is None or user.refresh_token != refresh_token:
-            raise HTTPException(status_code=401, detail="Invalid token")
+            raise exceptions.InvalidToken
 
-        access_token = create_tokens(user)[0]
 
-        return {"access_token": access_token}
+        # Создаем токен для последующей передачи (возможно необходимо сменить логику)
+        new_access_token = create_tokens(user)[0]
+        
+        # Устанавливаем access токен как куку    
+        response = JSONResponse(content={
+        "message": "Updating successful",
+        "new_access_token": new_access_token,
+        "refresh_token": refresh_token,
+    })
+        response.set_cookie(key="access_token", value=new_access_token, httponly=True)
+
+        return response
 
     except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token has expired")
+        raise exceptions.TokenExpired
     except jwt.DecodeError:
-        raise HTTPException(status_code=401, detail="Invalid token")
+        raise exceptions.InvalidToken
 
 
 
@@ -118,6 +128,10 @@ async def get_user_by_username(
     username: str,
     db: AsyncSession = Depends(get_async_session),
 ):
+    user = crud.get_existing_user(db, username)
+    if not user:
+        raise exceptions.UserDoesNotExist
+    
     return await crud.get_user_by_username(db, username)
 
 
@@ -126,7 +140,12 @@ async def get_user_by_email(
     email: str,
     db: AsyncSession = Depends(get_async_session),
 ):
-    return await crud.get_user_by_username(db, email)
+    print(1)
+    user = crud.get_existing_user(db, email)
+    if not user:
+        raise exceptions.UserDoesNotExist
+    
+    return await crud.get_user_by_email(db, email)
 
 
 @router.get("/read_user_by_id")
@@ -134,10 +153,14 @@ async def get_user_by_id(
     user_id: int,
     db: AsyncSession = Depends(get_async_session),
 ):
+    user = crud.get_existing_user(db, user_id)
+    if not user:
+        raise exceptions.UserDoesNotExist
+    
     return await crud.get_user_by_id(db, user_id)
 
 
-@router.get("/read_all_users", response_model=List[schemas.UserBase])
+@router.get("/read_all_users", response_model=List[schemas.User])
 async def get_all_users(
     skip: int = 0,
     limit: int = 10,
@@ -152,4 +175,14 @@ async def patch_user_role(
     new_role_id: int,
     db: AsyncSession = Depends(get_async_session),
 ):
-    return await crud.update_user_role(db, user_id, new_role_id)
+    user = await crud.get_existing_user(db, user_id=user_id)
+    role = await crud.get_existing_role(db, role_id=new_role_id)
+    
+    if not user:
+        raise exceptions.UserDoesNotExist
+    
+    if not role:
+        raise exceptions.RoleDoesNotExist
+    
+    new_user_role = await crud.update_user_role(db, user_id, new_role_id)
+    return new_user_role

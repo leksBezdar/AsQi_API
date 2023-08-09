@@ -2,9 +2,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, update
 
+
 from .models import User, Role
-from . import schemas
-from . import models
+from . import schemas, models, exceptions
 
 
 async def create_user(db: AsyncSession, user: schemas.UserBase):
@@ -61,11 +61,11 @@ async def get_user_by_username(db: AsyncSession, username: str):
     return user
 
 
-async def get_user_by_id(db: AsyncSession, id: int):
+async def get_user_by_id(db: AsyncSession, user_id: int):
     
     """ Возвращает информацию о пользователе по имени """
     
-    stmt = select(User).where(User.id == id)
+    stmt = select(User).where(User.id == user_id)
     
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
@@ -73,24 +73,28 @@ async def get_user_by_id(db: AsyncSession, id: int):
     return user
 
 
-async def get_existing_user(db: AsyncSession, email: str, username: str):
+async def get_existing_user(db: AsyncSession, email: str = None , username: str = None, user_id: int = -1):
     
     """ Проверка на существующего пользователя """
     
+    if email is None and username is None and user_id == -1:
+        raise exceptions.NoData()
+    
     email_exists = await get_user_by_email(db, email)
     username_exists = await get_user_by_username(db, username)
+    id_exists = await get_user_by_id(db, user_id)
     
-    return email_exists or username_exists
+    return email_exists or username_exists or id_exists
 
 
 
-async def check_existing_role(db: AsyncSession, role_name: str):
+async def get_role_by_name(db: AsyncSession, role_name: int):
     
-    """ Возвращает информацию о существующей роли пользователе """
+    """ Возвращает информацию о роли по имени """
     
-    query = select(Role).where(Role.name == role_name)
+    stmt = select(Role).where(Role.name == role_name)
     
-    result = await db.execute(query)
+    result = await db.execute(stmt)
     role = result.scalar_one_or_none()
     
     return role
@@ -98,14 +102,32 @@ async def check_existing_role(db: AsyncSession, role_name: str):
 
 async def get_role_by_id(db: AsyncSession, role_id: int):
     
-    """ Возвращает информацию о пользователе по айди"""
+    """ Возвращает информацию о роли по айди"""
     
-    query = select(Role.name).where(Role.id == role_id)
+    query = select(Role).where(Role.id == role_id)
     
     result = await db.execute(query)
-    role_name = result.scalar_one_or_none()
+    role = result.scalar_one_or_none()
     
-    return role_name
+    print(bool(role))
+    
+    return role
+
+
+
+async def get_existing_role(db: AsyncSession, role_name: str = None, role_id: int = -1):
+    
+    """ Возвращает информацию о существующей роли пользователе """
+    
+    if role_name is None and role_id == -1:
+        raise exceptions.NoData()
+    
+    role_id_exists = await get_role_by_id(db, role_id)
+    role_name_exists = await get_role_by_name(db, role_name)
+    
+    return role_id_exists or role_name_exists
+
+
 
 
 async def read_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
