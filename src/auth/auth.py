@@ -70,6 +70,11 @@ def get_random_string(length=12):
     return "".join(random.choice(string.ascii_letters) for _ in range(length))
 
 
+def get_random_id(length=random.randint(8,12)):
+    
+    return "".join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+
+
 def validate_password(password: str, hashed_password: str):
     
     """ Проверяет, что хеш пароля совпадает c хешем из БД """

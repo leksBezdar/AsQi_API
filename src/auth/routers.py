@@ -150,7 +150,7 @@ async def get_user_by_email(
 
 @router.get("/read_user_by_id")
 async def get_user_by_id(
-    user_id: int,
+    user_id: str,
     db: AsyncSession = Depends(get_async_session),
 ):
     user = crud.get_existing_user(db, user_id)
@@ -171,7 +171,7 @@ async def get_all_users(
     
 @router.patch("/update_user_role/")
 async def patch_user_role(
-    user_id: int,
+    user_id: str,
     new_role_id: int,
     db: AsyncSession = Depends(get_async_session),
 ):

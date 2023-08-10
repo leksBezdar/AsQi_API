@@ -1,14 +1,20 @@
+import random
+
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, update
 
 
 from .models import User, Role
-from . import schemas, models, exceptions
+from . import schemas, models, exceptions, auth
 
 
-async def create_user(db: AsyncSession, user: schemas.UserBase):
+async def create_user(db: AsyncSession, user: schemas.UserCreate):
+    
+    id = auth.get_random_string(random.randint(8, 12))
+    
     db_user = User(
+        id=id,
         email=user.email, 
         username=user.username,              
         hashed_password=user.hashed_password, 
@@ -61,7 +67,7 @@ async def get_user_by_username(db: AsyncSession, username: str):
     return user
 
 
-async def get_user_by_id(db: AsyncSession, user_id: int):
+async def get_user_by_id(db: AsyncSession, user_id: str):
     
     """ Возвращает информацию о пользователе по имени """
     
@@ -73,11 +79,11 @@ async def get_user_by_id(db: AsyncSession, user_id: int):
     return user
 
 
-async def get_existing_user(db: AsyncSession, email: str = None , username: str = None, user_id: int = -1):
+async def get_existing_user(db: AsyncSession, email: str = None , username: str = None, user_id: str = None):
     
     """ Проверка на существующего пользователя """
     
-    if email is None and username is None and user_id == -1:
+    if email is None and username is None and user_id == None:
         raise exceptions.NoData()
     
     email_exists = await get_user_by_email(db, email)
@@ -144,7 +150,7 @@ async def patch_refresh_token(db: AsyncSession, user: models.User, new_refresh_t
     return user
 
 
-async def update_user_role(db: AsyncSession, user_id: int, new_role_id: int):
+async def update_user_role(db: AsyncSession, user_id: str, new_role_id: int):
     
     """ Меняет роль пользователя """
     
