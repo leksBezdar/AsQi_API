@@ -1,10 +1,9 @@
-from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import or_
 from sqlalchemy.future import select
 
 from .models import Anime, Episode
-from . import schemas
+from . import schemas, exceptions
 
 
 async def create_anime(db: AsyncSession, anime: schemas.AnimeBase):
@@ -70,10 +69,7 @@ async def read_anime_by_id_or_title(db: AsyncSession, anime_id: int = None, titl
     anime = result.scalar_one_or_none()
 
     if anime is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Unknown ID or title"
-            )
+        raise exceptions.InvalidCredentials
 
     return anime
 

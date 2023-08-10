@@ -1,9 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
-from . import crud
-from . import schemas 
+from . import crud, schemas, exceptions 
 from ..database import get_async_session
 
 router = APIRouter()
@@ -16,7 +15,7 @@ async def create_anime(
 ):
     
     if  await crud.check_existing_anime(db=db, title=anime_data.title):
-        raise HTTPException(status_code=409, detail='Title already exists or item conflict')
+        raise exceptions.TitleAlreadyExists
     return await crud.create_anime(db, anime_data)
 
 
@@ -28,7 +27,7 @@ async def create_anime_episode(
 ):
     anime = await crud.read_anime_by_id_or_title(db=db, anime_id=anime_id)
     if not anime:
-        raise HTTPException(status_code=404, detail="Anime not found")
+        raise exceptions.TitleWasNotFound
     return await crud.create_episode(db=db, anime_id=anime_id, episode=episode_data)
 
 
@@ -50,6 +49,6 @@ async def read_all_animes(skip: int = 0, limit: int = 10, db: AsyncSession = Dep
 async def read_anime_episodes(anime_id: int, db: AsyncSession = Depends(get_async_session)):
     anime = await crud.read_anime_by_id_or_title(db=db, anime_id=anime_id)
     if not anime:
-        raise HTTPException(status_code=404, detail="Anime not found")
+        raise exceptions.TitleWasNotFound
     
     return await crud.read_all_episodes_for_anime(db=db, anime_id=anime_id)

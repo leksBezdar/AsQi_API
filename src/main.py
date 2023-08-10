@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import anime as anime_router
+from .api import routers as anime_router
 from .auth import routers as auth_router
 
 app = FastAPI(

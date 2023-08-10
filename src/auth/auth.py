@@ -10,7 +10,12 @@ from datetime import datetime, timedelta
 from .models import User
 from . import crud
 from ..database import AsyncSession
-from .config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
+from .config import(
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS
+    )
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

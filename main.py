@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from src.api.anime import router as anime_router
+from api.routers import router as anime_router
 from src.auth.routers import router as auth_router
 
 app = FastAPI(
