@@ -1,16 +1,15 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .api import routers as anime_router
-from .auth import routers as auth_router
+from src.api.routers import router as anime_router
+from src.auth.routers import router as auth_router
 
 app = FastAPI(
     title='AsQi'
 )
 
-app.include_router(anime_router.router, prefix="/anime_api")
-
-app.include_router(auth_router, prefix="/registration_api")
+app.include_router(anime_router, prefix="/animes", tags=["animes"])
+app.include_router(auth_router, prefix="/registration", tags=["registration"])
 
 
 origins = [
