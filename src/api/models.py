@@ -23,7 +23,7 @@ class Anime(Base):
     status = Column(String, nullable=False)
     studio = Column(String, nullable=False)
     MPAA = Column(String, nullable=False)
-    duration = Column(Integer, nullable=False)
+    duration = Column(String, nullable=False)
     big_img = Column(String, nullable=False, unique=True)
     small_img = Column(String, nullable=False, unique=True)
     screens = Column(JSON, nullable=False, unique=True)
@@ -35,10 +35,10 @@ class Anime(Base):
 class Episode(Base):
     __tablename__ = "episodes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    episode_title = Column(String, index=True, nullable=False, unique=True)
-    episode_link = Column(String, nullable=False, unique=True)
-    anime_id = Column(Integer, ForeignKey("animes.id"))
+    episode_number = Column(Integer, nullable=False, unique=True, primary_key=True)
+    episode_title = Column(String, index=True, nullable=False)
+    episode_link = Column(String, nullable=False)
+    anime_id = Column(Integer, ForeignKey("animes.id"), index=True)
     translations = Column(JSON, nullable=False)
 
     anime = relationship("Anime", back_populates="episodes")

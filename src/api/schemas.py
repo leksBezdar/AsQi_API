@@ -15,7 +15,7 @@ class AnimeBase(BaseModel):
     status: str
     studio: str
     MPAA: str
-    duration: int
+    duration: str
     type: str
     small_img: str
     big_img: str
@@ -35,11 +35,12 @@ class EpisodeBase(BaseModel):
     episode_title: str
     episode_link: str
     translations: Dict
+    anime_id: int
     
 
 
 class Episode(EpisodeBase):
-    id: int
+    episode_number: int
     anime_id: int
 
     class Config:
