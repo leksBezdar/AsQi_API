@@ -14,21 +14,22 @@ async def create_anime(
     db: AsyncSession = Depends(get_async_session),
 ):
     
-    if  await crud.check_existing_anime(db=db, title=anime_data.title):
+    if  await crud.get_existing_anime(db=db, title=anime_data.title):
         raise exceptions.TitleAlreadyExists
     return await crud.create_anime(db, anime_data)
 
 
 @router.post("/animes/{anime_id}/episodes/", response_model=schemas.Episode)
 async def create_anime_episode(
-    anime_id: int,
     episode_data: schemas.EpisodeBase,
     db: AsyncSession = Depends(get_async_session),
 ):
-    anime = await crud.read_anime_by_id_or_title(db=db, anime_id=anime_id)
+    anime = await crud.read_anime_by_id_or_title(db=db, anime_id=episode_data.anime_id)
+    
     if not anime:
         raise exceptions.TitleWasNotFound
-    return await crud.create_episode(db=db, anime_id=anime_id, episode=episode_data)
+    
+    return await crud.create_episode(db=db, anime_id=episode_data.anime_id, episode=episode_data)
 
 
 @router.get("/animes/{anime_id_or_title}", response_model=schemas.Anime)

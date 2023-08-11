@@ -37,11 +37,11 @@ class EpisodeBase(BaseModel):
     translations: Dict
     anime_id: int
     
-
-
+    
+    
 class Episode(EpisodeBase):
     episode_number: int
+        
+        
+class EpisodeCreate(EpisodeBase):
     anime_id: int
-
-    class Config:
-        from_attributes = True

@@ -35,10 +35,10 @@ class Anime(Base):
 class Episode(Base):
     __tablename__ = "episodes"
 
-    episode_number = Column(Integer, nullable=False, unique=True, primary_key=True)
+    episode_number = Column(Integer, nullable=False)
     episode_title = Column(String, index=True, nullable=False)
-    episode_link = Column(String, nullable=False)
-    anime_id = Column(Integer, ForeignKey("animes.id"), index=True)
+    episode_link = Column(String, nullable=False, unique=True, primary_key=True)
+    anime_id = Column(Integer, ForeignKey("animes.id"), index=True, default=1)
     translations = Column(JSON, nullable=False)
 
     anime = relationship("Anime", back_populates="episodes")

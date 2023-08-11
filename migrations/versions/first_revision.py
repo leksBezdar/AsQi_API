@@ -43,13 +43,13 @@ def upgrade() -> None:
     
     op.create_table(
         'episodes',
-        sa.Column('episode_number', sa.Integer(), nullable=False, unique=True),
+        sa.Column('episode_number', sa.Integer(), nullable=False),
         sa.Column('anime_id', sa.Integer(), nullable=True),
         sa.Column('episode_title', sa.String(), nullable=False),
         sa.Column('episode_link', sa.String(), nullable=False),
         sa.Column('translations', sa.JSON(), nullable=False),
         sa.ForeignKeyConstraint(['anime_id'], ['animes.id']),
-        sa.PrimaryKeyConstraint('episode_number')
+        sa.PrimaryKeyConstraint('episode_link')
     )
     
     op.create_table(

@@ -33,11 +33,16 @@ async def create_anime(db: AsyncSession, anime: schemas.AnimeBase):
     return db_anime
 
 
-async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.EpisodeBase):
+async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.EpisodeCreate):
+    
+    last_episode_number = await get_last_episode(db, anime_id) + 1
+        
+        
     db_episode = Episode(
+        episode_number=last_episode_number,
         episode_title=episode.episode_title,
         episode_link=episode.episode_link,
-        anime_id=anime_id,
+        anime_id=episode.anime_id,
         translations = episode.translations,
     )
     db.add(db_episode)
@@ -47,14 +52,32 @@ async def create_episode(db: AsyncSession, anime_id: int, episode: schemas.Episo
     return db_episode
 
 
-async def check_existing_anime(db: AsyncSession, title: str):
-    stmt = select(Anime).where(Anime.title == title)
+async def get_existing_anime(db: AsyncSession, title: str):
+    query = select(Anime).where(Anime.title == title)
     
-    result = await db.execute(stmt)
+    result = await db.execute(query)
     anime = result.scalar_one_or_none()
     
     return anime
+
+
+async def get_last_episode(db: AsyncSession, anime_id: int):
     
+    query = select(Episode.episode_number).where(Episode.anime_id == anime_id).order_by(Episode.episode_number.desc()).limit(1)
+    
+    result = await db.execute(query)
+    last_episode = result.scalars().first()
+    
+    return last_episode or 0
+
+
+async def get_existing_episode_link(db: AsyncSession, episode_link: str):
+    query = select(Episode).where(Episode.episode_link == episode_link)
+    
+    result = await db.execute(query)
+    episode_link = result.scalar_one_or_none()
+    
+    return episode_link
     
     
 async def read_anime_by_id_or_title(db: AsyncSession, anime_id: int = None, title: str = None):
