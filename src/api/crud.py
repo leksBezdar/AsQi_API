@@ -63,7 +63,12 @@ async def get_existing_anime(db: AsyncSession, title: str):
 
 async def get_last_episode(db: AsyncSession, anime_id: int):
     
-    query = select(Episode.episode_number).where(Episode.anime_id == anime_id).order_by(Episode.episode_number.desc()).limit(1)
+    query = (
+        select(Episode.episode_number)
+        .where(Episode.anime_id == anime_id)
+        .order_by(Episode.episode_number.desc())
+        .limit(1)
+    )
     
     result = await db.execute(query)
     last_episode = result.scalars().first()

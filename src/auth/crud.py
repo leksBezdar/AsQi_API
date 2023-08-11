@@ -9,10 +9,13 @@ from .models import User, Role
 from . import schemas, models, exceptions, auth
 
 
+# Создание пользователя в базе данных
 async def create_user(db: AsyncSession, user: schemas.UserCreate):
     
+    # Генерация уникального идентификатора пользователя с длинной от 8 до 12 символов
     id = auth.get_random_string(random.randint(8, 12))
     
+    # Создание объекта пользователя для сохранения в БД
     db_user = User(
         id=id,
         email=user.email, 
@@ -22,6 +25,8 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
         is_superuser=user.is_superuser, 
         is_verified=user.is_verified,
     )  
+    
+    # Добавление и сохранение пользователя в БД, *АТОМАРНОСТЬ
     db.add(db_user)
     await db.commit()
     await db.refresh(db_user)
@@ -29,12 +34,17 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
     return db_user
 
 
+#Создание роли в базе данных
 async def create_role(db: AsyncSession, role: schemas.RoleBase):
+    
+    # Создание объекта роли для сохранения в БД
     db_role = Role(
         name=role.name,
         is_active_subscription=role.is_active_subscription,
         permissions=role.permissions,
     )
+    
+    # Добавление и сохранение пользователя в БД, *АТОМАРНОСТЬ
     db.add(db_role)
     await db.commit()
     await db.refresh(db_role)
@@ -42,6 +52,7 @@ async def create_role(db: AsyncSession, role: schemas.RoleBase):
     return db_role
 
 
+# Получение информации о пользователе по email
 async def get_user_by_email(db: AsyncSession, user_email: str):
     
     """ Возвращает информацию о пользователе по email """
@@ -54,7 +65,7 @@ async def get_user_by_email(db: AsyncSession, user_email: str):
     return user
 
 
-
+# Получение информации о пользователе по username
 async def get_user_by_username(db: AsyncSession, username: str):
     
     """ Возвращает информацию о пользователе по имени """
@@ -67,6 +78,7 @@ async def get_user_by_username(db: AsyncSession, username: str):
     return user
 
 
+# Получение информации о пользователе по id
 async def get_user_by_id(db: AsyncSession, user_id: str):
     
     """ Возвращает информацию о пользователе по имени """
@@ -79,6 +91,7 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
     return user
 
 
+# Получение информации о существовании пользователя в БД
 async def get_existing_user(db: AsyncSession, email: str = None , username: str = None, user_id: str = None):
     
     """ Проверка на существующего пользователя """
@@ -93,19 +106,20 @@ async def get_existing_user(db: AsyncSession, email: str = None , username: str 
     return email_exists or username_exists or id_exists
 
 
-
+# Получение данных роли по role_name
 async def get_role_by_name(db: AsyncSession, role_name: int):
     
     """ Возвращает информацию о роли по имени """
     
-    stmt = select(Role).where(Role.name == role_name)
+    Query = select(Role).where(Role.name == role_name)
     
-    result = await db.execute(stmt)
+    result = await db.execute(Query)
     role = result.scalar_one_or_none()
     
     return role
 
 
+# Получение данных роли по role_id
 async def get_role_by_id(db: AsyncSession, role_id: int):
     
     """ Возвращает информацию о роли по айди"""
@@ -115,12 +129,11 @@ async def get_role_by_id(db: AsyncSession, role_id: int):
     result = await db.execute(query)
     role = result.scalar_one_or_none()
     
-    print(bool(role))
     
     return role
 
 
-
+# Получение информации о существовании роли в БД
 async def get_existing_role(db: AsyncSession, role_name: str = None, role_id: int = -1):
     
     """ Возвращает информацию о существующей роли пользователе """
@@ -134,9 +147,9 @@ async def get_existing_role(db: AsyncSession, role_name: str = None, role_id: in
     return role_id_exists or role_name_exists
 
 
-
-
-async def read_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
+# Получение информации о всех пользователях
+async def get_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
+    
     query = select(User).offset(skip).limit(limit)
     
     result = await db.execute(query)
@@ -144,19 +157,25 @@ async def read_all_users(db: AsyncSession, skip: int = 0, limit: int = 10):
     return result.scalars().all()
 
 
+# Смена refresh токена пользователя
 async def patch_refresh_token(db: AsyncSession, user: models.User, new_refresh_token: str):
+    
     user.refresh_token = new_refresh_token
     await db.commit()
+    
     return user
 
 
+# Смена роли пользователя
 async def update_user_role(db: AsyncSession, user_id: str, new_role_id: int):
     
     """ Меняет роль пользователя """
     
+    # Меняем роль пользователя
     stmt = update(User).where(User.id == user_id).values(role_id=new_role_id)
     await db.execute(stmt)
-      
+    
+    # Получаем новую рольроль  
     query = select(Role).where(Role.id == new_role_id)
 
     result = await db.execute(query)

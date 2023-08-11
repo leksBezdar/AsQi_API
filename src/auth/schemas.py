@@ -3,6 +3,13 @@ import re
 from pydantic import BaseModel, EmailStr, validator
 from typing import Dict
 
+from config import (
+    MIN_USERNAME_LENGTH as user_min_len,
+    MAX_USERNAME_LENGTH as user_max_len,
+    MIN_PASSWORD_LENGTH as pass_min_len,
+    MAX_PASSWORD_LENGTH as pass_max_len,
+                    )
+
 class UserBase(BaseModel):
     email: EmailStr
     username: str
@@ -12,7 +19,7 @@ class UserBase(BaseModel):
     
     @validator("username")
     def validate_username_length(cls, value):
-        if len(value) < 5 or len(value) > 15:
+        if len(value) < user_min_len or len(value) > user_max_len:
             raise ValueError("Username must be between 5 and 15 characters")
         
         return value
@@ -23,7 +30,7 @@ class UserCreate(UserBase):
     
     @validator("hashed_password")
     def validate_password_complexity(cls, value):
-        if len(value) < 8 or len(value) > 30:
+        if len(value) < pass_min_len or len(value) > pass_max_len:
             raise ValueError("Password must be between 8 and 30 characters")
         
         if not re.search(r"\d", value):
