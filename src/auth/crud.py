@@ -13,7 +13,7 @@ from . import schemas, models, exceptions, auth
 async def create_user(db: AsyncSession, user: schemas.UserCreate):
     
     # Генерация уникального идентификатора пользователя с длинной от 8 до 12 символов
-    id = auth.get_random_string(random.randint(8, 12))
+    id = auth.get_random_user_id(user.email)
     
     # Создание объекта пользователя для сохранения в БД
     db_user = User(

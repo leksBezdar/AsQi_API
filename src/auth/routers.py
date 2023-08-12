@@ -204,7 +204,7 @@ async def get_all_users(
     db: AsyncSession = Depends(get_async_session)
 ):
     # Получение списка пользователей с учетом пагинации
-    return await crud.read_all_users(db=db, skip=skip, limit=limit)
+    return await crud.get_all_users(db=db, skip=skip, limit=limit)
 
 
 # Обновление роли пользователя

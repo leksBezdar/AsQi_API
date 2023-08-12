@@ -75,7 +75,7 @@ def create_tokens(user: User):
 
 
 # Генерация случайной строки заданной длины
-def get_random_string(length=12):
+def get_random_string(length=16):
     
     """ Генерирует случайную строку, использующуюся как соль """
     
@@ -83,9 +83,18 @@ def get_random_string(length=12):
 
 
 # Генерация случайного идентификатора заданной длины
-def get_random_id(length=random.randint(8, 12)):
+def get_random_user_id(email: str):
     
-    return "".join(random.choice(string.ascii_letters + string.digits) for _ in range(length))
+    # Генерируем случайную строку в качестве соли
+    salt = get_random_string()
+    
+    # Комбинируем email и соль
+    combined_data = f"{email}{salt}"
+    
+    # Создаем хеш с использованием SHA-256
+    hashed_id = hashlib.sha256(combined_data.encode()).hexdigest()
+    
+    return hashed_id
 
 
 # Проверка пароля на соответствие хешированному паролю
