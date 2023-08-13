@@ -8,10 +8,10 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
 from .models import User
-from . import crud
+from . import crud, exceptions
 from ..database import AsyncSession
 from .config import(
-    SECRET_KEY,
+    JWT_SECRET_KEY,
     ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS
@@ -22,7 +22,7 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # Функция для создания access токена с указанием срока действия
-def create_access_token(data: dict, expires_delta: timedelta = None):
+async def create_access_token(data: dict, expires_delta: timedelta = None):
     
     """ Создает access токен """
     
@@ -37,14 +37,14 @@ def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode.update({"exp": expire})
     
     # Кодирование токена с использованием секретного ключа и алгоритма
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     
     return encoded_jwt
 
 
 
 # Создание refresh токена
-def create_refresh_token(data: dict):
+async def create_refresh_token(data: dict):
     
     """ Создает refresh токен """
     
@@ -56,26 +56,26 @@ def create_refresh_token(data: dict):
     
     # Добавление информации о сроке действия в данные и кодирование токена
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
     
     return encoded_jwt
 
 
 # Создание access и refresh токенов для пользователя
-def create_tokens(user: User): 
+async def create_tokens(user: User): 
     payload = {
         "sub": user.username
     }
     
     # Создание access и refresh токенов на основе payload
-    access_token = create_access_token(payload)
-    refresh_token = create_refresh_token(payload)
+    access_token = await create_access_token(payload)
+    refresh_token = await create_refresh_token(payload)
     
     return access_token, refresh_token
 
 
 # Генерация случайной строки заданной длины
-def get_random_string(length=16):
+async def get_random_string(length=16):
     
     """ Генерирует случайную строку, использующуюся как соль """
     
@@ -83,10 +83,10 @@ def get_random_string(length=16):
 
 
 # Генерация случайного идентификатора заданной длины
-def get_random_user_id(email: str):
+async def get_random_user_id(email: str):
     
     # Генерируем случайную строку в качестве соли
-    salt = get_random_string()
+    salt = await get_random_string()
     
     # Комбинируем email и соль
     combined_data = f"{email}{salt}"
@@ -97,8 +97,35 @@ def get_random_user_id(email: str):
     return hashed_id
 
 
+async def get_current_user(db: AsyncSession, refresh_token: str):
+    
+    user = await crud.get_user_by_token(db, refresh_token)
+    
+    if not user:
+        raise exceptions.InvalidAuthenthicationCredential
+        
+    if not user.is_active:
+        raise exceptions.InactiveUser
+        
+    return user.id
+
+
+def get_token_payload(access_token: str):
+    
+    try:
+        decoded_payload = jwt.decode(access_token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        
+        return decoded_payload["sub"]
+    
+    except jwt.ExpiredSignatureError:
+        raise exceptions.TokenExpired
+    
+    except jwt.DecodeError:
+        raise exceptions.InvalidToken
+    
+
 # Проверка пароля на соответствие хешированному паролю
-def validate_password(password: str, hashed_password: str):
+async def validate_password(password: str, hashed_password: str):
     
     """ Проверяет, что хеш пароля совпадает c хешем из БД """
     
@@ -106,17 +133,17 @@ def validate_password(password: str, hashed_password: str):
     salt, hashed = hashed_password.split("$")
     
     # Сравнение хешированного пароля
-    return hash_password(password, salt) == hashed
+    return await hash_password(password, salt) == hashed
 
 
 # Метод для хеширования пароля с учетом соли
-def hash_password(password: str, salt: str = None):
+async def hash_password(password: str, salt: str = None):
     
     """ Хеширует пароль c солью """
     
     # Если соль не указана, генерируем случайную соль
     if salt is None:
-        salt = crud.get_random_string()
+        salt = await get_random_string()
         
     # Применение хэш-функции PBKDF2 к паролю и соли
     enc = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)

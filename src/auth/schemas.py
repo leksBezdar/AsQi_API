@@ -13,20 +13,24 @@ from .config import (
 class UserBase(BaseModel):
     email: EmailStr
     username: str
+    hashed_password: str
     is_active: bool
     is_superuser: bool
     is_verified: bool
     
+
+class UserCreate(BaseModel):
+    email: EmailStr
+    username: str
+    hashed_password: str
+    
+        
     @validator("username")
     def validate_username_length(cls, value):
         if len(value) < int(user_min_len) or len(value) > int(user_max_len):
             raise ValueError("Username must be between 5 and 15 characters")
         
         return value
-    
-
-class UserCreate(UserBase):
-    hashed_password: str
     
     @validator("hashed_password")
     def validate_password_complexity(cls, value):

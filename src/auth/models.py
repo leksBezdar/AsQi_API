@@ -13,7 +13,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role_id = Column(Integer, ForeignKey('roles.id'), default=1)
     refresh_token = Column(String, nullable=True)
-    is_active = Column(Boolean, nullable=False, default=True)
+    is_active = Column(Boolean, nullable=False, default=False)
     is_superuser = Column(Boolean, nullable=False, default=False)
     is_verified = Column(Boolean, nullable=False, default=False)
 

@@ -1,6 +1,6 @@
 import jwt
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -8,7 +8,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import Any, List, Dict
 
-from .config import ALGORITHM, SECRET_KEY
+from .config import ALGORITHM, JWT_SECRET_KEY
 
 
 from . import crud, schemas, auth, exceptions
@@ -35,8 +35,8 @@ async def create_user(
        raise exceptions.UserAlreadyExists
    
     # Хеширование пароля перед сохранением
-    salt = auth.get_random_string()
-    hashed_password = hash_password(user_data.hashed_password, salt)
+    salt = await auth.get_random_string()
+    hashed_password = await hash_password(user_data.hashed_password, salt)
     user_data.hashed_password = f"{salt}${hashed_password}"
     
     # Создание нового пользователя
@@ -77,19 +77,23 @@ async def login(
 ):
     # Проверяем данные пользователя
     user = await crud.get_user_by_username(db, form_data.username)
-    if not user or not validate_password(form_data.password, user.hashed_password):
+    if not user or not await validate_password(form_data.password, user.hashed_password):
         raise exceptions.InvalidCredentials
 
-    # Создаем токены для пользователя
-    access_token, refresh_token = create_tokens(user)
+    # Создаем токены дл=я пользователя
+    access_token, refresh_token = await create_tokens(user)
     
-    await crud.patch_refresh_token(db, user, refresh_token)
+    # Делаем пользователя активным
+    
+    user_statement = await crud.update_user_statement(db, form_data.username) 
+    
+    await crud.patch_refresh_token(db, user, refresh_token) # ЗАМЕНИТЬ (ПРОВЕРКА АКТУАЛЬНОСТИ ТОКЕНА -> PATCH/GET)
 
     # Подготовка ответа с информацией о успешном обновлении
     response = JSONResponse(content={
-        "message": "Login successful",
         "access_token": access_token,
         "refresh_token": refresh_token,
+        "new_user_statement": user_statement
     })
     
     # Устанавливаем токен как куку
@@ -106,7 +110,7 @@ async def update_access_token(
 ):
     try:
         # Декодирование refresh токена для извлечения данных
-        payload = jwt.decode(refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
+        payload = jwt.decode(refresh_token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         
         # Проверка наличия имени пользователя в токене
@@ -121,9 +125,9 @@ async def update_access_token(
             raise exceptions.InvalidToken
 
         # Создание нового access токена для последующей передачи
-        new_access_token = create_tokens(user)[0]
+        new_access_token, _ = await create_tokens(user)
         
-        # Подготовка ответа с информацией о успешном обновлении и новым access токеном
+        # Подготовка ответа с информацией об успешном обновлении и новым access токеном
         response = JSONResponse(content={
             "message": "Updating successful",
             "new_access_token": new_access_token,
@@ -233,3 +237,31 @@ async def patch_user_role(
     
     # Возврат новой информации о пользователе с обновленной ролью
     return new_user_role
+
+
+# Точка выхода пользователя
+@router.post("/logout/")
+async def logout(request: Request,db: AsyncSession=Depends(get_async_session)):
+    
+    # Получение access токена из сессии
+    access_token = request.cookies.get('access_token')
+    
+    if not access_token: 
+        raise exceptions.InactiveUser
+     
+    # Получение username из access токена после декодирования
+    username = auth.get_token_payload(access_token)
+    
+    # Смена поля is_active
+    user_statement = await crud.update_user_statement(db, username)
+    
+    # Формирование ответа с информацией об успешном выходе пользователя
+    response = JSONResponse(content={
+        "message": "logout successful",
+        "new_user_statement": user_statement,
+    })
+        
+    # Удаление куки
+    response.delete_cookie(key="access_token")
+    
+    return response

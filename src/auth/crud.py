@@ -1,5 +1,3 @@
-import random
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, update
@@ -10,10 +8,10 @@ from . import schemas, models, exceptions, auth
 
 
 # Создание пользователя в базе данных
-async def create_user(db: AsyncSession, user: schemas.UserCreate):
+async def create_user(db: AsyncSession, user: schemas.UserBase):
     
     # Генерация уникального идентификатора пользователя с длинной от 8 до 12 символов
-    id = auth.get_random_user_id(user.email)
+    id = await auth.get_random_user_id(user.email)
     
     # Создание объекта пользователя для сохранения в БД
     db_user = User(
@@ -21,9 +19,9 @@ async def create_user(db: AsyncSession, user: schemas.UserCreate):
         email=user.email, 
         username=user.username,              
         hashed_password=user.hashed_password, 
-        is_active=user.is_active,                
-        is_superuser=user.is_superuser, 
-        is_verified=user.is_verified,
+        is_active=False,       
+        is_superuser=False,
+        is_verified=False,
     )  
     
     # Добавление и сохранение пользователя в БД, *АТОМАРНОСТЬ
@@ -91,6 +89,21 @@ async def get_user_by_id(db: AsyncSession, user_id: str):
     return user
 
 
+async def get_user_by_token(db: AsyncSession, refresh_token: str):
+    
+    """ Возвращает информацию о пользователе по имени """
+    
+    if not refresh_token: 
+        raise exceptions.TokenWasNotFount
+    
+    stmt = select(User).where(User.refresh_token == refresh_token)
+    
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
+    
+    return user
+
+
 # Получение информации о существовании пользователя в БД
 async def get_existing_user(db: AsyncSession, email: str = None , username: str = None, user_id: str = None):
     
@@ -134,12 +147,12 @@ async def get_role_by_id(db: AsyncSession, role_id: int):
 
 
 # Получение информации о существовании роли в БД
-async def get_existing_role(db: AsyncSession, role_name: str = None, role_id: int = -1):
+async def get_existing_role(db: AsyncSession, role_name: str = None, role_id: int = None):
     
     """ Возвращает информацию о существующей роли пользователе """
     
-    if role_name is None and role_id == -1:
-        raise exceptions.NoData()
+    if not role_name and not role_id:
+        raise exceptions.NoRoleData()
     
     role_id_exists = await get_role_by_id(db, role_id)
     role_name_exists = await get_role_by_name(db, role_name)
@@ -164,6 +177,33 @@ async def patch_refresh_token(db: AsyncSession, user: models.User, new_refresh_t
     await db.commit()
     
     return user
+
+
+async def update_user_statement(db: AsyncSession, username: str = None, user_id: str = None):
+    
+    # Проверяем входные данные
+    if not username or not user_id:
+        raise exceptions.NoUserData
+    
+    # Поиск пользователя
+    query = select(User.is_active).where(or_(User.username == username, User.id == user_id))
+    result = await db.execute(query)
+    is_active_stmt = result.fetchone()
+    
+    # Переключаем значение между True и False
+    new_is_active = not is_active_stmt[0]
+    
+    # Обновление состояния поля is_active пользователя
+    update_stmt = (
+            update(User)
+            .where(or_(User.username == username, User.id == user_id))
+            .values(is_active=new_is_active)
+            .returning(User.is_active)
+        )
+    result = await db.execute(update_stmt)
+    await db.commit()
+    
+    return {"message": new_is_active}
 
 
 # Смена роли пользователя
