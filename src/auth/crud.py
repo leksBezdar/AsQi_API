@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, update
+from uuid import uuid4
 
 
 from .models import User, Role
@@ -10,8 +11,7 @@ from . import schemas, models, exceptions, auth
 # Создание пользователя в базе данных
 async def create_user(db: AsyncSession, user: schemas.UserBase):
     
-    # Генерация уникального идентификатора пользователя с длинной от 8 до 12 символов
-    id = await auth.get_random_user_id(user.email)
+    id = str(uuid4())
     
     # Создание объекта пользователя для сохранения в БД
     db_user = User(

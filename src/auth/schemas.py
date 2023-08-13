@@ -1,4 +1,5 @@
 import re
+from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, validator
 from typing import Dict
@@ -50,7 +51,7 @@ class UserCreate(BaseModel):
         
 
 class User(UserBase):
-    id: str
+    id: UUID
     
 
 class RoleBase(BaseModel):

@@ -2,6 +2,7 @@ import hashlib
 import random
 import string
 import jwt
+from uuid import uuid4
 
 from fastapi import Depends, HTTPException, status
 from passlib.context import CryptContext
@@ -80,21 +81,6 @@ async def get_random_string(length=16):
     """ Генерирует случайную строку, использующуюся как соль """
     
     return "".join(random.choice(string.ascii_letters) for _ in range(length))
-
-
-# Генерация случайного идентификатора заданной длины
-async def get_random_user_id(email: str):
-    
-    # Генерируем случайную строку в качестве соли
-    salt = await get_random_string()
-    
-    # Комбинируем email и соль
-    combined_data = f"{email}{salt}"
-    
-    # Создаем хеш с использованием SHA-256
-    hashed_id = hashlib.sha256(combined_data.encode()).hexdigest()
-    
-    return hashed_id
 
 
 async def get_current_user(db: AsyncSession, refresh_token: str):
