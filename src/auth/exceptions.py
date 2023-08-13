@@ -32,7 +32,6 @@ class NoRoleData(HTTPException):
     def __init__(self):
         super().__init__(status_code=404, detail="Role data was not found")
 
-
 class RoleAlreadyExists(HTTPException):
     def __init__(self):
         super().__init__(status_code=409, detail="Role already exists")

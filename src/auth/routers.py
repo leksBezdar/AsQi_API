@@ -91,9 +91,7 @@ async def login(
 
     # Подготовка ответа с информацией о успешном обновлении
     response = JSONResponse(content={
-        "access_token": access_token,
-        "refresh_token": refresh_token,
-        "new_user_statement": user_statement
+        "message": "login successful",
     })
     
     # Устанавливаем токен как куку
@@ -130,8 +128,6 @@ async def update_access_token(
         # Подготовка ответа с информацией об успешном обновлении и новым access токеном
         response = JSONResponse(content={
             "message": "Updating successful",
-            "new_access_token": new_access_token,
-            "refresh_token": refresh_token,
         })
         
         # Установка нового access токена как куки в ответе
@@ -156,14 +152,13 @@ async def get_user_by_username(
     db: AsyncSession = Depends(get_async_session),
 ):
     # Получение пользователя с указанным именем
-    user = crud.get_existing_user(db, username)
-    
+    user = await crud.get_existing_user(db, username=username)
     # Проверка наличия пользователя
     if not user:
         raise exceptions.UserDoesNotExist
     
     # Возврат информации о пользователе
-    return await crud.get_user_by_username(db, username)
+    return user
 
 
 # Получение информации о пользователе по email
@@ -173,14 +168,14 @@ async def get_user_by_email(
     db: AsyncSession = Depends(get_async_session),
 ):
     # Получение пользователя с указанным email
-    user = crud.get_existing_user(db, email)
+    user = await crud.get_existing_user(db, email=email)
     
     # Проверка наличия пользователя
     if not user:
         raise exceptions.UserDoesNotExist
     
     # Возврат информации о пользователе
-    return await crud.get_user_by_email(db, email)
+    return user
 
 
 # Получение информации о пользователе по ID
@@ -190,14 +185,14 @@ async def get_user_by_id(
     db: AsyncSession = Depends(get_async_session),
 ):
     # Получение пользователя с указанным ID
-    user = crud.get_existing_user(db, user_id)
+    user = await crud.get_existing_user(db, user_id=user_id)
     
     # Проверка наличия пользователя
     if not user:
         raise exceptions.UserDoesNotExist
     
     # Возврат информации о пользователе
-    return await crud.get_user_by_id(db, user_id)
+    return user
 
 
 # Получение списка всех пользователей
@@ -258,7 +253,6 @@ async def logout(request: Request,db: AsyncSession=Depends(get_async_session)):
     # Формирование ответа с информацией об успешном выходе пользователя
     response = JSONResponse(content={
         "message": "logout successful",
-        "new_user_statement": user_statement,
     })
         
     # Удаление куки

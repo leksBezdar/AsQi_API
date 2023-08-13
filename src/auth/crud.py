@@ -67,11 +67,14 @@ async def get_user_by_email(db: AsyncSession, user_email: str):
 async def get_user_by_username(db: AsyncSession, username: str):
     
     """ Возвращает информацию о пользователе по имени """
+    # print(username)
     
     stmt = select(User).where(User.username == username)
     
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
+    
+    # print(user)
     
     return user
 
@@ -182,7 +185,7 @@ async def patch_refresh_token(db: AsyncSession, user: models.User, new_refresh_t
 async def update_user_statement(db: AsyncSession, username: str = None, user_id: str = None):
     
     # Проверяем входные данные
-    if not username or not user_id:
+    if not username and not user_id:
         raise exceptions.NoUserData
     
     # Поиск пользователя
