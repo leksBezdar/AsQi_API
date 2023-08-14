@@ -5,7 +5,7 @@ from uuid import uuid4
 
 
 from .models import User, Role
-from . import schemas, models, exceptions, auth
+from . import schemas, models, exceptions
 
 
 # Создание пользователя в базе данных
@@ -67,14 +67,12 @@ async def get_user_by_email(db: AsyncSession, user_email: str):
 async def get_user_by_username(db: AsyncSession, username: str):
     
     """ Возвращает информацию о пользователе по имени """
-    # print(username)
     
     stmt = select(User).where(User.username == username)
     
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
     
-    # print(user)
     
     return user
 
@@ -99,12 +97,27 @@ async def get_user_by_token(db: AsyncSession, refresh_token: str):
     if not refresh_token: 
         raise exceptions.TokenWasNotFount
     
-    stmt = select(User).where(User.refresh_token == refresh_token)
+    query = select(User).where(User.refresh_token == refresh_token)
     
-    result = await db.execute(stmt)
+    result = await db.execute(query)
     user = result.scalar_one_or_none()
     
     return user
+
+
+async def get_user_role(db: AsyncSession, username: str = None, user_id: str = None, user_email: str = None):
+    
+    user_role_id = select(User.role_id).where(User.username == username)
+    
+    
+    result = await db.execute(user_role_id)
+    role_id = result.scalar_one_or_none()
+    
+    role = await get_role_by_id(db, role_id)
+    
+    return role.name
+    
+    
 
 
 # Получение информации о существовании пользователя в БД
@@ -118,6 +131,7 @@ async def get_existing_user(db: AsyncSession, email: str = None , username: str 
     email_exists = await get_user_by_email(db, email)
     username_exists = await get_user_by_username(db, username)
     id_exists = await get_user_by_id(db, user_id)
+    
     
     return email_exists or username_exists or id_exists
 
@@ -217,6 +231,7 @@ async def update_user_role(db: AsyncSession, user_id: str, new_role_id: int):
     # Меняем роль пользователя
     stmt = update(User).where(User.id == user_id).values(role_id=new_role_id)
     await db.execute(stmt)
+    await db.commit()
     
     # Получаем новую рольроль  
     query = select(Role).where(Role.id == new_role_id)

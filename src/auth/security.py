@@ -2,7 +2,6 @@ import hashlib
 import random
 import string
 import jwt
-from uuid import uuid4
 
 from fastapi import Depends, HTTPException, status
 from passlib.context import CryptContext
@@ -35,6 +34,7 @@ async def create_access_token(data: dict, expires_delta: timedelta = None):
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+        print(expire)
     to_encode.update({"exp": expire})
     
     # Кодирование токена с использованием секретного ключа и алгоритма
@@ -73,6 +73,7 @@ async def create_tokens(user: User):
     refresh_token = await create_refresh_token(payload)
     
     return access_token, refresh_token
+    
 
 
 # Генерация случайной строки заданной длины
@@ -93,10 +94,10 @@ async def get_current_user(db: AsyncSession, refresh_token: str):
     if not user.is_active:
         raise exceptions.InactiveUser
         
-    return user.id
+    return user
 
 
-def get_token_payload(access_token: str):
+async def get_token_payload(access_token: str):
     
     try:
         decoded_payload = jwt.decode(access_token, JWT_SECRET_KEY, algorithms=[ALGORITHM])

@@ -1,6 +1,6 @@
 import jwt
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
 
@@ -11,9 +11,10 @@ from typing import Any, List, Dict
 from .config import ALGORITHM, JWT_SECRET_KEY
 
 
-from . import crud, schemas, auth, exceptions
+from . import crud, schemas, exceptions, security
 from ..database import get_async_session
-from .auth import create_tokens, hash_password, validate_password
+from .security import create_tokens, hash_password, validate_password
+from .authorization import is_admin
 
 
 router = APIRouter()
@@ -27,15 +28,17 @@ async def create_user(
     db: AsyncSession = Depends(get_async_session),
 ):
     # Проверка на существующего пользователя по email и username
-    if await crud.get_existing_user(
+    user = await crud.get_existing_user(
         db=db,
         email=user_data.email,
         username=user_data.username,
-    ):
+    )
+    
+    if user:
        raise exceptions.UserAlreadyExists
    
     # Хеширование пароля перед сохранением
-    salt = await auth.get_random_string()
+    salt = await security.get_random_string()
     hashed_password = await hash_password(user_data.hashed_password, salt)
     user_data.hashed_password = f"{salt}${hashed_password}"
     
@@ -182,6 +185,7 @@ async def get_user_by_email(
 @router.get("/read_user_by_id")
 async def get_user_by_id(
     user_id: str,
+    current_user: dict = Depends(is_admin),
     db: AsyncSession = Depends(get_async_session),
 ):
     # Получение пользователя с указанным ID
@@ -200,7 +204,7 @@ async def get_user_by_id(
 async def get_all_users(
     skip: int = 0,
     limit: int = 10,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
 ):
     # Получение списка пользователей с учетом пагинации
     return await crud.get_all_users(db=db, skip=skip, limit=limit)
@@ -245,7 +249,7 @@ async def logout(request: Request,db: AsyncSession=Depends(get_async_session)):
         raise exceptions.InactiveUser
      
     # Получение username из access токена после декодирования
-    username = auth.get_token_payload(access_token)
+    username = security.get_token_payload(access_token)
     
     # Смена поля is_active
     user_statement = await crud.update_user_statement(db, username)

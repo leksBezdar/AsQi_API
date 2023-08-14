@@ -52,6 +52,7 @@ class UserCreate(BaseModel):
 
 class User(UserBase):
     id: UUID
+    role_id: int
     
 
 class RoleBase(BaseModel):
