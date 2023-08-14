@@ -8,7 +8,7 @@ from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
 from .models import User
-from . import crud, exceptions
+from . import exceptions
 from ..database import AsyncSession
 from .config import(
     JWT_SECRET_KEY,
@@ -16,6 +16,8 @@ from .config import(
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS
     )
+
+from .crud import DatabaseManager
 
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -86,7 +88,10 @@ async def get_random_string(length=16):
 
 async def get_current_user(db: AsyncSession, refresh_token: str):
     
-    user = await crud.get_user_by_token(db, refresh_token)
+    db_manager = DatabaseManager(db)
+    user_crud = db_manager.user_crud
+    
+    user = await user_crud.get_user_by_token(db, refresh_token)
     
     if not user:
         raise exceptions.InvalidAuthenthicationCredential
