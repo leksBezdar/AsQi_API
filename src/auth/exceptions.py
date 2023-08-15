@@ -48,6 +48,6 @@ class TokenExpired(HTTPException):
     def __init__(self):
         super().__init__(status_code=401, detail="Token has expired")
         
-class TokenWasNotFount(HTTPException):
+class TokenWasNotFound(HTTPException):
     def __init__(self):
         super.__init__(status_code=404, detail="Token was not found")

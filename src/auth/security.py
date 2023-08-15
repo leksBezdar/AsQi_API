@@ -36,7 +36,6 @@ async def create_access_token(data: dict, expires_delta: timedelta = None):
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
-        print(expire)
     to_encode.update({"exp": expire})
     
     # Кодирование токена с использованием секретного ключа и алгоритма

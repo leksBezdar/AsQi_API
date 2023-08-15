@@ -11,11 +11,11 @@ from typing import Any, List, Dict
 from .config import ALGORITHM, JWT_SECRET_KEY
 
 
-from . import crud, schemas, exceptions, security
+from . import schemas, exceptions, security
 from ..database import get_async_session
 from .security import create_tokens, hash_password, validate_password
 from .crud import DatabaseManager
-from .authorization import is_admin
+from .authorization import has_permissons
 
 
 router = APIRouter()
@@ -145,10 +145,13 @@ async def update_access_token(
 # Получение информации о пользователе по имени пользователя
 @router.get("/read_user_by_username")
 async def get_user_by_username(
+    request: Request,
     username: str,
     db: AsyncSession = Depends(get_async_session),
-    current_user = Depends(is_admin)
 ):
+    
+    has_permissions = await has_permissons(user_role="admin", request=request, db=db)
+    
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
     user = await user_crud.get_user_by_username(username)
