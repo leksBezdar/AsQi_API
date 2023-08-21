@@ -1,30 +1,31 @@
-from sqlalchemy import Column, Integer, String, Boolean, TIMESTAMP, ForeignKey, JSON
-from ..database import Base
+from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import mapped_column
 from sqlalchemy.orm import relationship
-
+from sqlalchemy import Integer, Boolean, ForeignKey, JSON
+from ..database import Base
 
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, index=True)
-    user_set_id = Column(String, nullable=True, unique=True)
-    email = Column(String, nullable=False, unique=True)
-    username = Column(String, nullable=False, unique=True)
-    hashed_password = Column(String, nullable=False)
-    role_id = Column(Integer, ForeignKey('roles.id'), default=1)
-    refresh_token = Column(String, nullable=True)
-    is_active = Column(Boolean, nullable=False, default=False)
-    is_superuser = Column(Boolean, nullable=False, default=False)
-    is_verified = Column(Boolean, nullable=False, default=False)
+    id: Mapped[str] = mapped_column(primary_key=True, index=True)
+    user_set_id: Mapped[str] = mapped_column(nullable=True, unique=True)
+    email: Mapped[str] = mapped_column(nullable=False, unique=True)
+    username: Mapped[str] = mapped_column(nullable=False, unique=True)
+    hashed_password: Mapped[str] = mapped_column(nullable=False)
+    role_id: Mapped[int] = mapped_column(Integer, ForeignKey('roles.id'), default=1)
+    refresh_token: Mapped[str] = mapped_column(nullable=True)
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_superuser: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    is_verified: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
 
-    role = relationship("Role", back_populates="users")
+    role: Mapped[relationship] = relationship("Role", back_populates="users")
 
 class Role(Base):
     __tablename__ = "roles"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, nullable=False, unique=True)
-    is_active_subscription = Column(Boolean, nullable=False, default=False)
-    permissions = Column(JSON, nullable=False, default={})
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(nullable=False, unique=True)
+    is_active_subscription: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    permissions: Mapped[dict] = mapped_column(JSON, nullable=False, default={})
 
-    users = relationship("User", back_populates="role")
+    users: Mapped[relationship] = relationship("User", back_populates="role")

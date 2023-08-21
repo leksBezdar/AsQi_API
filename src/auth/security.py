@@ -1,17 +1,20 @@
 import hashlib
 import random
 import string
+from fastapi import Depends
 import jwt
 
-from fastapi import Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
+
 from .models import User
-from . import exceptions
-from ..database import AsyncSession
+from . import exceptions, schemas
+from ..database import AsyncSession, get_async_session
 from .config import(
-    JWT_SECRET_KEY,
+    REFRESH_TOKEN_SECRET_KEY,
+    ACCESS_TOKEN_SECRET_KEY,
     ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     REFRESH_TOKEN_EXPIRE_DAYS
@@ -37,9 +40,9 @@ async def create_access_token(data: dict, expires_delta: timedelta = None):
     else:
         expire = datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-    
+
     # Кодирование токена с использованием секретного ключа и алгоритма
-    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, ACCESS_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
     
     return encoded_jwt
 
@@ -58,13 +61,13 @@ async def create_refresh_token(data: dict):
     
     # Добавление информации о сроке действия в данные и кодирование токена
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=ALGORITHM)
+    encoded_jwt = jwt.encode(to_encode, REFRESH_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
     
     return encoded_jwt
 
 
 # Создание access и refresh токенов для пользователя
-async def create_tokens(user: User): 
+async def create_tokens(user: User) -> schemas.Token: 
     payload = {
         "sub": user.username
     }
@@ -101,12 +104,31 @@ async def get_current_user(db: AsyncSession, refresh_token: str):
     return user
 
 
-async def get_token_payload(access_token: str):
+async def get_access_token_payload(access_token: str, db: AsyncSession = Depends(get_async_session)):
     
     try:
-        decoded_payload = jwt.decode(access_token, JWT_SECRET_KEY, algorithms=[ALGORITHM])
+        decoded_payload = jwt.decode(access_token, ACCESS_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
+        expiration_time = datetime.utcfromtimestamp(decoded_payload['exp'])
+
+        username = decoded_payload['sub']
+
+        return username, expiration_time
+
+    except jwt.ExpiredSignatureError:
+        return None, None
+    
+    except jwt.DecodeError:
+        raise exceptions.InvalidToken
+    
+
+async def get_refresh_token_payload(refresh_token: str):
+    
+    try:
+        decoded_payload = jwt.decode(refresh_token, REFRESH_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
+        expiration_time = datetime.utcfromtimestamp(decoded_payload['exp'])
+        username = decoded_payload['sub']
         
-        return decoded_payload["sub"]
+        return username, expiration_time
     
     except jwt.ExpiredSignatureError:
         raise exceptions.TokenExpired
@@ -140,3 +162,41 @@ async def hash_password(password: str, salt: str = None):
     enc = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
 
     return enc.hex()
+
+
+async def update_user_tokens(refresh_token: str, db: AsyncSession):
+    try:  
+        username, expiration_time = await get_refresh_token_payload(refresh_token)
+        
+        if username is None or expiration_time is None:
+            raise exceptions.InvalidToken
+        
+        db_manager = DatabaseManager(db)
+        user_crud = db_manager.user_crud
+        
+        user = await user_crud.get_user_by_username(username)
+        
+        if user is None or user.refresh_token != refresh_token:
+            raise exceptions.InvalidToken
+        
+        new_access_token, new_refresh_token = await create_tokens(user)
+        
+        
+        await user_crud.patch_refresh_token(user=user, new_refresh_token=new_refresh_token)
+        
+        response_content = {
+            "message": "Tokens refreshed successfully",
+        }
+        
+        response = JSONResponse(content=response_content)
+        
+        response.set_cookie(key="access_token", value=new_access_token, httponly=True)
+        response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True)
+        
+        return response
+    
+    except jwt.ExpiredSignatureError:
+        raise exceptions.TokenExpired
+        
+    except jwt.DecodeError:
+        raise exceptions.InvalidToken

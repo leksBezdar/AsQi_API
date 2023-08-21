@@ -3,7 +3,8 @@ import os
 
 load_dotenv()
 
-JWT_SECRET_KEY = os.environ.get("JWT_SECRET_KEY")
+ACCESS_TOKEN_SECRET_KEY = os.environ.get("ACCESS_TOKEN_SECRET_KEY")
+REFRESH_TOKEN_SECRET_KEY = os.environ.get("REFRESH_TOKEN_SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
 
 

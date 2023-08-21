@@ -1,7 +1,7 @@
 import re
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, validator
+from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Dict
 
 from .config import (
@@ -15,15 +15,13 @@ class UserBase(BaseModel):
     email: EmailStr
     username: str
     hashed_password: str
-    is_active: bool
-    is_superuser: bool
-    is_verified: bool
+    is_active: bool = Field(False)
+    is_verified: bool = Field(False)
+    is_superuser: bool = Field(False)
     
 
-class UserCreate(BaseModel):
-    email: EmailStr
-    username: str
-    hashed_password: str
+class UserCreate(UserBase):
+    pass
     
         
     @validator("username")
@@ -56,8 +54,8 @@ class User(UserBase):
     
 
 class RoleBase(BaseModel):
-    name: str
-    is_active_subscription: bool
+    name: str = Field("user")
+    is_active_subscription: bool = Field(False)
     permissions: Dict
 
 class RoleCreate(RoleBase):
@@ -65,3 +63,7 @@ class RoleCreate(RoleBase):
 
 class Role(RoleBase):
     id: int
+    
+class Token(BaseModel):
+    access_token: str
+    refresh_token: str
