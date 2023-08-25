@@ -6,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import List
 
+from .config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
+
 from . import schemas, security
 
 from .models import User, Role
@@ -56,20 +58,26 @@ async def login(
     user = await user_crud.authenticate_user(username=credentials.username, password=credentials.password)
     
     # Создаем токены
-    access_token, refresh_token = await security.create_tokens(user)
+    access_token, refresh_token = await security.create_tokens(db=db, user_id=user.id)
     
     # Меняем состояние поля is_active пользователя
     await user_crud.update_user_statement(username=credentials.username)
-
-    # Устанавливаем токены пользователя: refresh_token в бд, куки; acces_token в куки
-    await user_crud.patch_refresh_token(user, refresh_token)
 
     response = JSONResponse(content={
         "message": "login successful",
     })
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True)
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True)
+    
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh_token,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 30 * 24* 60,
+        httponly=True)
     
     return response
 
@@ -87,7 +95,8 @@ async def logout(
    
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
-    await user_crud.logout(request=request, acces_token=access_token, refresh_token=refresh_token)
+    
+    await user_crud.logout(acces_token=access_token, refresh_token=refresh_token)
     
     response = JSONResponse(content={
         "message": "logout successful",
@@ -170,3 +179,32 @@ async def patch_user_role(
     new_role = await role_crud.get_role_by_id(new_role_id)
     
     return await user_crud.update_user_role(user_id=user.id, new_role_id=new_role.id)
+
+
+@router.post("/refresh")
+async def refresh_token(
+    request: Request,
+    response: Response,
+    db: AsyncSession = Depends(get_async_session),
+):
+    
+    db_manager = DatabaseManager(db)
+    user_crud = db_manager.user_crud
+    
+    access_token, refresh_token = await user_crud.refresh_token(request.cookies.get("refresh_token"))
+
+    response.set_cookie(
+        'access_token',
+        access_token,
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        httponly=True,
+    )
+    response.set_cookie(
+        'refresh_token',
+        refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 7 * 24 * 60,
+        httponly=True,
+    )
+    
+    
+    return access_token, refresh_token

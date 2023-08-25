@@ -8,6 +8,8 @@ from fastapi.responses import JSONResponse
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
+from .dao import RefreshTokenDAO
+
 
 from .models import User
 from . import exceptions, schemas
@@ -27,18 +29,20 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 # Функция для создания access токена с указанием срока действия
-async def create_access_token(data: dict, expires_delta: timedelta = None):
+# Функция для создания access токена с указанием срока действия
+async def create_access_token(data: str):
     
     """ Создает access токен """
     
+    data_dict = {
+        "sub": data
+    }
+    
     # Создание словаря с данными для кодирования
-    to_encode = data.copy()
+    to_encode = data_dict.copy()
     
     # Вычисление времени истечения срока действия токена
-    if expires_delta:
-        expire = datetime.utcnow() + expires_delta
-    else:
-        expire = datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+    expire = datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
 
     # Кодирование токена с использованием секретного ключа и алгоритма
@@ -47,14 +51,18 @@ async def create_access_token(data: dict, expires_delta: timedelta = None):
     return encoded_jwt
 
 
-
 # Создание refresh токена
-async def create_refresh_token(data: dict):
+# Создание refresh токена
+async def create_refresh_token(data: str):
     
     """ Создает refresh токен """
     
+    data_dict = {
+        "sub": data
+    }
+    
     # Копирование данных для кодирования
-    to_encode = data.copy()
+    to_encode = data_dict.copy()
     
     # Вычисление даты истечения срока действия
     expire = datetime.utcnow() + timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
@@ -67,14 +75,25 @@ async def create_refresh_token(data: dict):
 
 
 # Создание access и refresh токенов для пользователя
-async def create_tokens(user: User) -> schemas.Token: 
-    payload = {
-        "sub": user.username
-    }
-    
+async def create_tokens(db: AsyncSession, user_id: str) -> schemas.Token: 
     # Создание access и refresh токенов на основе payload
-    access_token = await create_access_token(payload)
-    refresh_token = await create_refresh_token(payload)
+    access_token = await create_access_token(user_id)
+    refresh_token = await create_refresh_token(user_id)
+    
+    refresh_token_expires = timedelta(
+            days=int(REFRESH_TOKEN_EXPIRE_DAYS))
+    
+    db_token = await RefreshTokenDAO.add(
+                db,
+                schemas.RefreshSessionCreate(
+                    user_id=user_id,
+                    refresh_token=refresh_token,
+                    expires_at=refresh_token_expires.total_seconds()
+                )
+            )
+    db.add(db_token)
+    await db.commit()
+    await db.refresh(db_token)
     
     return access_token, refresh_token
     

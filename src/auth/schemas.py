@@ -2,7 +2,7 @@ import re
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field, validator
-from typing import Dict
+from typing import Dict, Optional
 
 from .config import (
     MIN_USERNAME_LENGTH as user_min_len,
@@ -14,14 +14,15 @@ from .config import (
 class UserBase(BaseModel):
     email: EmailStr
     username: str
-    hashed_password: str
     is_active: bool = Field(False)
     is_verified: bool = Field(False)
     is_superuser: bool = Field(False)
     
 
 class UserCreate(UserBase):
-    pass
+    email: EmailStr
+    username: str
+    password: str
     
         
     @validator("username")
@@ -31,7 +32,7 @@ class UserCreate(UserBase):
         
         return value
     
-    @validator("hashed_password")
+    @validator("password")
     def validate_password_complexity(cls, value):
         if len(value) < int(pass_min_len) or len(value) > int(pass_max_len):
             raise ValueError("Password must be between 8 and 30 characters")
@@ -46,12 +47,18 @@ class UserCreate(UserBase):
             raise ValueError("Password must contain at least one special character")
         
         return value
+    
+class UserUpdate(UserBase):
+    password: Optional[str] = None
         
 
 class User(UserBase):
-    id: UUID
+    id: str
     role_id: int
     
+class UserCreateDB(UserBase):
+    id: str
+    hashed_password: Optional[str] = None
 
 class RoleBase(BaseModel):
     name: str = Field("user")
@@ -63,6 +70,18 @@ class RoleCreate(RoleBase):
 
 class Role(RoleBase):
     id: int
+    
+class RoleUpdate(RoleBase):
+    name: Optional[str] = None
+    
+class RefreshSessionCreate(BaseModel):
+    refresh_token: str
+    expires_at: int
+    user_id: str
+
+
+class RefreshSessionUpdate(RefreshSessionCreate):
+    user_id: Optional[str] = Field(None)
     
 class Token(BaseModel):
     access_token: str
