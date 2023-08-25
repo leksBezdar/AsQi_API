@@ -107,22 +107,6 @@ async def get_random_string(length=16):
     return "".join(random.choice(string.ascii_letters) for _ in range(length))
 
 
-async def get_current_user(db: AsyncSession, refresh_token: str):
-    
-    db_manager = DatabaseManager(db)
-    user_crud = db_manager.user_crud
-    
-    user = await user_crud.get_user_by_token(db, refresh_token)
-    
-    if not user:
-        raise exceptions.InvalidAuthenthicationCredential
-        
-    if not user.is_active:
-        raise exceptions.InactiveUser
-        
-    return user
-
-
 async def get_access_token_payload(access_token: str, db: AsyncSession = Depends(get_async_session)):
     
     try:
@@ -181,41 +165,3 @@ async def hash_password(password: str, salt: str = None):
     enc = hashlib.pbkdf2_hmac("sha256", password.encode(), salt.encode(), 100_000)
 
     return enc.hex()
-
-
-async def update_user_tokens(refresh_token: str, db: AsyncSession):
-    try:  
-        username, expiration_time = await get_refresh_token_payload(refresh_token)
-        
-        if username is None or expiration_time is None:
-            raise exceptions.InvalidToken
-        
-        db_manager = DatabaseManager(db)
-        user_crud = db_manager.user_crud
-        
-        user = await user_crud.get_user_by_username(username)
-        
-        if user is None or user.refresh_token != refresh_token:
-            raise exceptions.InvalidToken
-        
-        new_access_token, new_refresh_token = await create_tokens(user)
-        
-        
-        await user_crud.patch_refresh_token(user=user, new_refresh_token=new_refresh_token)
-        
-        response_content = {
-            "message": "Tokens refreshed successfully",
-        }
-        
-        response = JSONResponse(content=response_content)
-        
-        response.set_cookie(key="access_token", value=new_access_token, httponly=True)
-        response.set_cookie(key="refresh_token", value=new_refresh_token, httponly=True)
-        
-        return response
-    
-    except jwt.ExpiredSignatureError:
-        raise exceptions.TokenExpired
-        
-    except jwt.DecodeError:
-        raise exceptions.InvalidToken

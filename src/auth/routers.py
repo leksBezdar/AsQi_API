@@ -109,57 +109,33 @@ async def logout(
 
 
 # Получение информации о пользователе по имени пользователя
-@router.get("/read_user_by_username")
-async def get_user_by_username(
-    username: str,
+@router.get("/read_user")
+async def get_user(
+    username: str = None,
+    email: str = None,
+    user_id: str = None,
     db: AsyncSession = Depends(get_async_session),
 ):
-    
+
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
     
-    return await user_crud.get_user_by_username(username)
-    
-    
+    user = await user_crud.get_existing_user(username=username, email=email, user_id=user_id)
 
-
-# Получение информации о пользователе по email
-@router.get("/read_user_by_email")
-async def get_user_by_email(
-    email: str,
-    db: AsyncSession = Depends(get_async_session),
-):
-    db_manager = DatabaseManager(db)
-    user_crud = db_manager.user_crud
-    
-    return await user_crud.get_user_by_email(email)
-    
-
-
-
-# Получение информации о пользователе по ID
-@router.get("/read_user_by_id")
-async def get_user_by_id(
-    user_id: str,
-    db: AsyncSession = Depends(get_async_session),
-):
-    db_manager = DatabaseManager(db)
-    user_crud = db_manager.user_crud
-    
-    return await user_crud.get_user_by_id(user_id)
+    return user or {"message": "No user found"}
 
 
 # Получение списка всех пользователей
 @router.get("/read_all_users", response_model=List[schemas.User])
 async def get_all_users(
-    skip: int = 0,
+    offset: int = 0,
     limit: int = 10,
     db: AsyncSession = Depends(get_async_session),
 ):
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
     
-    return await user_crud.get_all_users(skip=skip, limit=limit)
+    return await user_crud.get_all_users(offset=offset, limit=limit)
 
 
 # Обновление роли пользователя

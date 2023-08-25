@@ -9,7 +9,7 @@ from uuid import uuid4
 from .config import REFRESH_TOKEN_EXPIRE_DAYS
 
 
-from .dao import RefreshTokenDAO, UserDAO
+from .dao import RefreshTokenDAO, RoleDAO, UserDAO
 from .models import Refresh_token, User, Role
 from . import schemas, models, exceptions, security
 from .schemas import RefreshSessionUpdate, UserCreate, UserCreateDB
@@ -84,82 +84,17 @@ class UserCRUD:
         
         await self.db.commit()
         
-        
-            
-    
-    # Получение пользователя по его электронной почте
-    async def get_user_by_email(self, email: str) -> models.User:
-        
-        if not email:
-            raise exceptions.UserDoesNotExist
-        
-        stmt = select(User).where(User.email == email)
-        
-        result = await self.db.execute(stmt)
-        user = result.scalar_one_or_none()
-        
-        return user
-    
-    # Получение пользователя по его имени пользователя
-    async def get_user_by_username(self, username: str) -> models.User:
-        
-        if not username: 
-            raise exceptions.UserDoesNotExist
-        
-        stmt = select(User).where(User.username == username)
-        
-        result = await self.db.execute(stmt)
-        user = result.scalar_one_or_none()
-        
-        return user
-    
-    # Получение пользователя по его ID
-    async def get_user_by_id(self, user_id: str) -> models.User:
-        
-        if not user_id:
-            raise exceptions.UserDoesNotExist
-        
-        stmt = select(User).where(User.id == user_id)
-        
-        result = await self.db.execute(stmt)
-        user = result.scalar_one_or_none()
-        
-        return user
-    
-    # Получение пользователя по его refresh токену 
-    async def get_user_by_token(self, refresh_token: str) -> models.User:
-        
-        # Проверка существования записи с токеном
-        if not refresh_token: 
-            raise exceptions.TokenWasNotFound
-        
-        query = select(User).where(User.refresh_token == refresh_token)
-        
-        result = await self.db.execute(query)
-        user = result.scalar_one_or_none()
-        
-        return user
-    
-    # Получение ID роли пользователя
-    async def get_user_role_id(self, username: str = None, user_id: str = None, user_email: str = None) -> int:
-        
-        query = select(User.role_id).where(User.username == username)
-        
-        result = await self.db.execute(query)
-        role_id = result.scalar_one_or_none()
-        return role_id
     
     # Проверка наличия пользователя с заданной электронной почтой, именем пользователя или ID
     async def get_existing_user(self, email: str = None, username: str = None, user_id: str = None) -> User:
         
-        if email:
-            user = await self.get_user_by_email(email=email)
-        elif username:
-            user = await self.get_user_by_username(username=username)
-        elif user_id:
-            user = await self.get_user_by_id(user_id=user_id)
-        else:
+        if not email and not username and not user_id: 
             raise exceptions.NoUserData
+        
+        user = await UserDAO.find_one_or_none(self.db, or_(
+            User.email == email,
+            User.username == username,
+            User.id == user_id))
         
         return user
     
@@ -205,13 +140,11 @@ class UserCRUD:
         return new_user_data
     
     # Получение списка всех пользователей с поддержкой пагинации
-    async def get_all_users(self, skip: int = 0, limit: int = 10):
+    async def get_all_users(self, *filter, offset: int = 0, limit: int = 100, **filter_by) -> list[User]:
         
-        query = select(User).offset(skip).limit(limit)
+        users = await UserDAO.find_all(self.db, *filter, offset=offset, limit=limit, **filter_by)
         
-        result = await self.db.execute(query)
-        
-        return result.scalars().all()
+        return users or {"message": "no users found"}
 
     
     async def get_refresh_token_by_user_id(self, user: models.User) -> models.Refresh_token:
@@ -284,36 +217,15 @@ class RoleCRUD:
         
         return db_role
     
-    # Получение роли по ее имени
-    async def get_role_by_name(self, role_name: str) -> models.Role:
-        
-        query = select(Role).where(Role.name == role_name)
-        
-        result = await self.db.execute(query)
-        role = result.scalar_one_or_none()
-        
-        
-        return role
-    
-    # Получение имени роли по ее ID
-    async def get_role_by_id(self, role_id: int) -> models.Role:
-        
-        query = select(Role).where(Role.id == role_id)
-        
-        result = await self.db.execute(query)
-        role = result.scalar_one_or_none()
-        
-        
-        return role
-    
     # Проверка наличия роли с заданным именем или ID
     async def get_existing_role(self, role_name: str = None, role_id: int = None) -> bool:
         
-        if role_name: 
-            role = await self.get_role_by_id(role_id)
+        if not role_name and not role_id:
+            raise exceptions.NoRoleData
         
-        elif role_id:
-            role = await self.get_role_by_name(role_name)
+        role = await RoleDAO.find_one_or_none(self.db, or_(
+            Role.name == role_name,
+            Role.id == role_id))
         
         return role
 
