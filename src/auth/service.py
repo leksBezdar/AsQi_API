@@ -1,17 +1,27 @@
-from datetime import datetime, timedelta, timezone
+import jwt
+
 from typing import Optional
-from fastapi import Request
+from uuid import uuid4
+
+from datetime import datetime, timedelta, timezone
+
+from fastapi import Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, update
-from uuid import uuid4
 
-from .config import REFRESH_TOKEN_EXPIRE_DAYS
+from . import schemas, models, exceptions, security
 
-
+from ..database import get_async_session
+from .config import(
+    REFRESH_TOKEN_SECRET_KEY,
+    ACCESS_TOKEN_SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    REFRESH_TOKEN_EXPIRE_DAYS
+    )
 from .dao import RefreshTokenDAO, RoleDAO, UserDAO
 from .models import Refresh_token, User, Role
-from . import schemas, models, exceptions, security
 from .schemas import RefreshSessionUpdate, UserCreate, UserCreateDB
 
 
@@ -71,7 +81,7 @@ class UserCRUD:
         if not refresh_token and not acces_token: 
             return exceptions.InactiveUser
         
-        user_id, _ = await security.get_refresh_token_payload(refresh_token=refresh_token)
+        user_id, _ = await TokenCrud.get_refresh_token_payload(refresh_token=refresh_token)
         
         refresh_session = await RefreshTokenDAO.find_one_or_none(self.db, Refresh_token.refresh_token == refresh_token)
         if refresh_session:
@@ -171,8 +181,8 @@ class UserCRUD:
         if user is None:
             raise exceptions.InvalidToken
         
-        access_token = await security.create_access_token(user.username)
-        refresh_token = await security.create_refresh_token(user.username)
+        access_token = await TokenCrud.create_access_token(self, data = user.username)
+        refresh_token = await TokenCrud.create_refresh_token(self, data = user.username)
         
         refresh_token_expires = timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
         
@@ -228,6 +238,113 @@ class RoleCRUD:
             Role.id == role_id))
         
         return role
+    
+    
+class TokenCrud:
+    
+    def __init__(self, db: AsyncSession):
+        self.db = db
+    
+    
+    # Функция для создания access токена с указанием срока действия
+    async def create_access_token(self, data: str):
+
+        """ Создает access токен """
+
+        data_dict = {
+            "sub": data
+        }
+
+        # Создание словаря с данными для кодирования
+        to_encode = data_dict.copy()
+
+        # Вычисление времени истечения срока действия токена
+        expire = datetime.utcnow() + timedelta(minutes=int(ACCESS_TOKEN_EXPIRE_MINUTES))
+        to_encode.update({"exp": expire})
+
+        # Кодирование токена с использованием секретного ключа и алгоритма
+        encoded_jwt = jwt.encode(to_encode, ACCESS_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
+
+        return encoded_jwt
+
+
+    # Создание refresh токена
+    async def create_refresh_token(self, data: str):
+
+        """ Создает refresh токен """
+
+        data_dict = {
+            "sub": data
+        }
+
+        # Копирование данных для кодирования
+        to_encode = data_dict.copy()
+
+        # Вычисление даты истечения срока действия
+        expire = datetime.utcnow() + timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
+
+        # Добавление информации о сроке действия в данные и кодирование токена
+        to_encode.update({"exp": expire})
+        encoded_jwt = jwt.encode(to_encode, REFRESH_TOKEN_SECRET_KEY, algorithm=ALGORITHM)
+
+        return encoded_jwt
+
+
+    # Создание access и refresh токенов для пользователя
+    async def create_tokens(self, db: AsyncSession, user_id: str) -> schemas.Token: 
+        # Создание access и refresh токенов на основе payload
+        access_token = await self.create_access_token(user_id)
+        refresh_token = await self.create_refresh_token(user_id)
+
+        refresh_token_expires = timedelta(
+                days=int(REFRESH_TOKEN_EXPIRE_DAYS))
+
+        db_token = await RefreshTokenDAO.add(
+                    db,
+                    schemas.RefreshSessionCreate(
+                        user_id=user_id,
+                        refresh_token=refresh_token,
+                        expires_at=refresh_token_expires.total_seconds()
+                    )
+                )
+        db.add(db_token)
+        await db.commit()
+        await db.refresh(db_token)
+
+        return access_token, refresh_token
+    
+    
+    async def get_access_token_payload(access_token: str, db: AsyncSession = Depends(get_async_session)):
+    
+        try:
+            decoded_payload = jwt.decode(access_token, ACCESS_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
+            expiration_time = datetime.utcfromtimestamp(decoded_payload['exp'])
+
+            username = decoded_payload['sub']
+
+            return username, expiration_time
+
+        except jwt.ExpiredSignatureError:
+            return None, None
+
+        except jwt.DecodeError:
+            raise exceptions.InvalidToken
+    
+
+    async def get_refresh_token_payload(refresh_token: str):
+
+        try:
+            decoded_payload = jwt.decode(refresh_token, REFRESH_TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
+            expiration_time = datetime.utcfromtimestamp(decoded_payload['exp'])
+            username = decoded_payload['sub']
+
+            return username, expiration_time
+
+        except jwt.ExpiredSignatureError:
+            raise exceptions.TokenExpired
+
+        except jwt.DecodeError:
+            raise exceptions.InvalidToken
 
     
 # Определение класса для управления обоми crud-классами 
@@ -236,6 +353,7 @@ class DatabaseManager:
         self.db = db
         self.user_crud = UserCRUD(db)
         self.role_crud = RoleCRUD(db)
+        self.token_crud = TokenCrud(db)
 
     # Применение изменений к базе данных
     async def commit(self):

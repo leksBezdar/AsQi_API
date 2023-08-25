@@ -7,7 +7,7 @@ from datetime import datetime
 
 from .security import get_access_token_payload, get_refresh_token_payload
 from ..database import get_async_session
-from .crud import DatabaseManager
+from .service import DatabaseManager
 
 
 

@@ -10,13 +10,13 @@ app = FastAPI(
 )
 
 app.include_router(anime_router, prefix="/animes", tags=["animes"])
-app.include_router(auth_router, prefix="/registration", tags=["registration"])
+app.include_router(auth_router, tags=["registration"])
 
 
 origins = [
     "http://localhost",
-    "http://localhost:5173",  # Пример для разработки на localhost
-    "https://anime-blush.vercel.app/",    # Пример для реального домена (* ЗАМЕНИТЬ НА НАСТОЯЩИЙ)
+    "http://localhost:5173",
+    "https://anime-blush.vercel.app/",
 ]
 
 # Добавление middleware для CORS

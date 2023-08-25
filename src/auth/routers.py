@@ -11,7 +11,7 @@ from .config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 from . import schemas, security
 
 from .models import User, Role
-from .crud import DatabaseManager
+from .service import DatabaseManager
 from ..database import get_async_session
 
 
@@ -54,11 +54,12 @@ async def login(
     
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
+    token_crud = db_manager.token_crud
 
     user = await user_crud.authenticate_user(username=credentials.username, password=credentials.password)
     
     # Создаем токены
-    access_token, refresh_token = await security.create_tokens(db=db, user_id=user.id)
+    access_token, refresh_token = await token_crud.create_tokens(db=db, user_id=user.id)
     
     # Меняем состояние поля is_active пользователя
     await user_crud.update_user_statement(username=credentials.username)
@@ -152,7 +153,7 @@ async def patch_user_role(
     role_crud = db_manager.role_crud
     
     user = await user_crud.get_existing_user(username=username, user_id=user_id)
-    new_role = await role_crud.get_role_by_id(new_role_id)
+    new_role = await role_crud.get_existing_role(role_id = new_role_id)
     
     return await user_crud.update_user_role(user_id=user.id, new_role_id=new_role.id)
 
