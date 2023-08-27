@@ -68,6 +68,9 @@ class RoleBase(BaseModel):
 class RoleCreate(RoleBase):
     pass
 
+class UserCreateDB(RoleBase):
+    pass
+
 class Role(RoleBase):
     id: int
     

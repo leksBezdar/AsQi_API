@@ -4,11 +4,11 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import List, Optional
+from typing import Optional
 
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
-from . import schemas, utils
+from . import schemas
 
 from .dependencies import get_current_user
 from .models import User, Role
@@ -173,7 +173,7 @@ async def patch_user_role(
     return await user_crud.update_user_role(user_id=user.id, new_role_id=new_role.id)
 
 
-@router.post("/refresh")
+@router.patch("/refresh_tokens")
 async def refresh_token(
     request: Request,
     response: Response,

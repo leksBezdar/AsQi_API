@@ -1,12 +1,11 @@
 from typing import Any, Dict, Generic, List, Optional, TypeVar, Union
 
 from sqlalchemy import delete, insert, select, update
-from sqlalchemy.sql import func
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel
 
-from .database import get_async_session, Base
+from .database import Base
 
 
 ModelType = TypeVar("ModelType", bound=Base)
@@ -73,13 +72,6 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         
             return None
         
-    
-    @classmethod
-    async def delete(cls, session: AsyncSession, *filter, **filter_by) -> None:
-        stmt = delete(cls.model).filter(*filter).filter_by(**filter_by)
-        
-        await session.execute(stmt)
-        
         
     @classmethod
     async def update(
@@ -106,6 +98,12 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         
         return result.scalars().one()
     
+    
+    @classmethod
+    async def delete(cls, session: AsyncSession, *filter, **filter_by) -> None:
+        stmt = delete(cls.model).filter(*filter).filter_by(**filter_by)
+        
+        await session.execute(stmt)
     
     
     

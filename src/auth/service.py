@@ -135,18 +135,18 @@ class UserCRUD:
     # Обновление роли пользователя
     async def update_user_role(self, user_id: User.id, new_role_id: Role.id) -> Role:
         
-        stmt = update(User).where(User.id == user_id).values(role_id=new_role_id)
+        # stmt = update(User).where(User.id == user_id).values(role_id=new_role_id)
         
-        await self.db.execute(stmt)
-        await self.db.commit()
+        new_user_role = await RoleDAO.find_one_or_none(self.db,
+            Role.id == new_role_id)
         
+        await UserDAO.update(self.db,
+            User.id == user_id,
+            obj_in={"role_id": new_role_id}
+        )
         
-        query = select(Role).where(Role.id == new_role_id)
-        
-        result = await self.db.execute(query)
-        new_user_data = result.scalar_one_or_none()
-        
-        return new_user_data
+        await self.db.commit()          
+        return new_user_role
     
     # Получение списка всех пользователей с поддержкой пагинации
     async def get_all_users(self, *filter, offset: int = 0, limit: int = 100, **filter_by) -> list[User]:
@@ -243,9 +243,14 @@ class RoleCRUD:
             permissions=role.permissions,
         )
         
-        self.db.add(db_role)
+        db_role = await RoleDAO.add(
+            self.db,
+            UserCreateDB(
+            **role.model_dump(),
+            )
+        )
+        
         await self.db.commit()
-        await self.db.refresh(db_role)
         
         return db_role
     
@@ -313,7 +318,7 @@ class TokenCrud:
 
 
     # Создание access и refresh токенов для пользователя
-    async def create_tokens(self, db: AsyncSession, user_id: str) -> schemas.Token: 
+    async def create_tokens(self, user_id: str) -> schemas.Token: 
         # Создание access и refresh токенов на основе payload
         access_token = await self.create_access_token(user_id)
         refresh_token = await self.create_refresh_token(user_id)
@@ -322,16 +327,15 @@ class TokenCrud:
                 days=int(REFRESH_TOKEN_EXPIRE_DAYS))
 
         db_token = await RefreshTokenDAO.add(
-                    db,
+                    self.db,
                     schemas.RefreshSessionCreate(
                         user_id=user_id,
                         refresh_token=refresh_token,
                         expires_at=refresh_token_expires.total_seconds()
                     )
                 )
-        db.add(db_token)
-        await db.commit()
-        await db.refresh(db_token)
+        await self.db.commit()
+        await self.db.refresh(db_token)
 
         return access_token, refresh_token
     
