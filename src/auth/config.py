@@ -3,8 +3,7 @@ import os
 
 load_dotenv()
 
-ACCESS_TOKEN_SECRET_KEY = os.environ.get("ACCESS_TOKEN_SECRET_KEY")
-REFRESH_TOKEN_SECRET_KEY = os.environ.get("REFRESH_TOKEN_SECRET_KEY")
+TOKEN_SECRET_KEY = os.environ.get("TOKEN_SECRET_KEY")
 ALGORITHM = os.environ.get("ALGORITHM")
 
 

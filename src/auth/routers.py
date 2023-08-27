@@ -4,12 +4,13 @@ from fastapi.security import OAuth2PasswordRequestForm
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from typing import List
+from typing import List, Optional
 
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
-from . import schemas, security
+from . import schemas, utils
 
+from .dependencies import get_current_user
 from .models import User, Role
 from .service import DatabaseManager
 from ..database import get_async_session
@@ -109,14 +110,28 @@ async def logout(
     return response
 
 
+@router.get("/me", response_model=schemas.UserBase)
+async def get_current_user(
+    db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_user)
+) -> Optional[User]:
+    
+    db_manager = DatabaseManager(db)
+    user_crud = db_manager.user_crud
+    
+    user = await user_crud.get_existing_user(username = current_user.username)
+    
+    return user
+
+
 # Получение информации о пользователе по имени пользователя
-@router.get("/read_user")
+@router.get("/read_user", response_model=schemas.UserBase)
 async def get_user(
     username: str = None,
     email: str = None,
     user_id: str = None,
     db: AsyncSession = Depends(get_async_session),
-):
+) -> Optional[User]:
 
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
@@ -127,7 +142,7 @@ async def get_user(
 
 
 # Получение списка всех пользователей
-@router.get("/read_all_users", response_model=List[schemas.User])
+@router.get("/read_all_users")
 async def get_all_users(
     offset: int = 0,
     limit: int = 10,
@@ -185,3 +200,23 @@ async def refresh_token(
     
     
     return access_token, refresh_token
+
+
+@router.delete("/delete_user")
+async def delete_user(
+    username: str = None,
+    email: str = None,
+    user_id: str = None,
+    db: AsyncSession = Depends(get_async_session),
+):
+    
+    db_manager = DatabaseManager(db)
+    user_crud = db_manager.user_crud
+    
+    await user_crud.delete_user(username=username, email=email, user_id=user_id)
+    
+    response = JSONResponse(content={
+        "message": "Delete successful",
+    })
+    
+    return response

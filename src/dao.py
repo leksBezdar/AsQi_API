@@ -77,6 +77,7 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     @classmethod
     async def delete(cls, session: AsyncSession, *filter, **filter_by) -> None:
         stmt = delete(cls.model).filter(*filter).filter_by(**filter_by)
+        
         await session.execute(stmt)
         
         
