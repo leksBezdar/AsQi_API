@@ -5,7 +5,7 @@ from uuid import uuid4
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import Depends
+from fastapi import Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy import or_, update
@@ -220,6 +220,26 @@ class UserCRUD:
             )
         
         await self.db.commit()
+        
+    
+    async def get_user_statement(self,
+        username: str,
+        request: Request) -> bool:
+
+        try:
+            refresh_token = request.cookies.get("refresh_token")
+            if refresh_token:
+                raise exceptions.UserAlreadyActive
+
+        except KeyError:
+            user = await self.get_existing_user(username=username)
+            if not user:
+                raise exceptions.UserDoesNotExist
+            
+            if user.is_active == True:
+                raise exceptions.UserAlreadyActive
+
+            return user.is_active
     
 
 # Определение класса для управления операциями с ролями в базе данных

@@ -10,7 +10,7 @@ from .config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 from . import schemas, exceptions
 
-from .dependencies import get_current_user
+from .dependencies import get_current_active_user, get_current_user
 from .models import User, Role
 from .service import DatabaseManager
 from ..database import get_async_session
@@ -48,6 +48,7 @@ async def create_role(
 # Точка входа пользователя
 @router.post("/login/")
 async def login(
+    request: Request,
     response: Response,
     credentials: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_async_session),
@@ -58,6 +59,8 @@ async def login(
     token_crud = db_manager.token_crud
 
     user = await user_crud.authenticate_user(username=credentials.username, password=credentials.password)
+    
+    await user_crud.get_user_statement(username = user.username, request=request)
     
     # Создаем токены
     access_token, refresh_token = await token_crud.create_tokens(user_id=user.id)
@@ -90,7 +93,8 @@ async def login(
 async def logout(
     request: Request,
     response: Response,
-    db: AsyncSession = Depends(get_async_session)
+    db: AsyncSession = Depends(get_async_session),
+    active_user = Depends(get_current_active_user)
 ):
     access_token = request.cookies.get('access_token')
     refresh_token = request.cookies.get('refresh_token')
