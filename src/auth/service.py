@@ -80,16 +80,15 @@ class UserCRUD:
         if not refresh_token and not acces_token: 
             return exceptions.InactiveUser
         
-        user_id= await TokenCrud.get_refresh_token_payload(self.db, refresh_token=refresh_token)
+        user_id = await TokenCrud.get_refresh_token_payload(self.db, refresh_token=refresh_token)
         
-        refresh_session = await RefreshTokenDAO.find_one_or_none(self.db, Refresh_token.refresh_token == refresh_token)
-        if refresh_session:
+        refresh_sessions = await RefreshTokenDAO.find_all(self.db, Refresh_token.user_id == user_id)
+
+        for refresh_session in refresh_sessions:
                 await RefreshTokenDAO.delete(self.db, user_id = refresh_session.user_id)
 
         
         await self.update_user_statement(user_id=user_id)
-        
-        refresh_session.refresh_token = None
         
         await self.db.commit()
         

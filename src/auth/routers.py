@@ -8,7 +8,7 @@ from typing import Optional
 
 from .config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
-from . import schemas
+from . import schemas, exceptions
 
 from .dependencies import get_current_user
 from .models import User, Role
@@ -60,7 +60,7 @@ async def login(
     user = await user_crud.authenticate_user(username=credentials.username, password=credentials.password)
     
     # Создаем токены
-    access_token, refresh_token = await token_crud.create_tokens(db=db, user_id=user.id)
+    access_token, refresh_token = await token_crud.create_tokens(user_id=user.id)
     
     # Меняем состояние поля is_active пользователя
     await user_crud.update_user_statement(username=credentials.username)

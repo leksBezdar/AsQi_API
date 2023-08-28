@@ -55,3 +55,7 @@ class UserAlreadyExists(HTTPException):
 class RoleAlreadyExists(HTTPException):
     def __init__(self):
         super().__init__(status_code=409, detail="Role already exists")
+        
+class UserAlreadyActive(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=409, detail="User is already active")
