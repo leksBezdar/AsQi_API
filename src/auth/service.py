@@ -71,7 +71,11 @@ class UserCRUD:
             raise exceptions.InvalidCredentials
          
          
-        if user and await utils.validate_password(password=password, hashed_password=user.hashed_password):    
+        if user and await utils.validate_password(password=password, hashed_password=user.hashed_password):   
+            
+            # Меняем состояние поля is_active пользователя
+            await self.update_user_statement(username=user.username, new_is_active = True)
+             
             return user
         
     
@@ -88,7 +92,7 @@ class UserCRUD:
                 await RefreshTokenDAO.delete(self.db, user_id = refresh_session.user_id)
 
         
-        await self.update_user_statement(user_id=user_id)
+        await self.update_user_statement(user_id=user_id, new_is_active = False)
         
         await self.db.commit()
         
@@ -107,7 +111,7 @@ class UserCRUD:
         return user
     
     # Обновление статуса 'is_active' пользователя
-    async def update_user_statement(self, username: str = None, user_id: str = None):
+    async def update_user_statement(self, new_is_active: str, username: str = None, user_id: str = None):
         
         if not username and not user_id:
             raise exceptions.NoUserData
@@ -117,8 +121,6 @@ class UserCRUD:
             User.id == user_id))
         
         # Меняем значение поля
-        new_is_active = not user.is_active
-        
         update_stmt = (
             update(User)
             .where(or_(User.username == username, User.id == user_id))
@@ -198,7 +200,7 @@ class UserCRUD:
         return access_token, refresh_token
 
 
-    async def delete_user(self, email: str = None, username: str = None, user_id: str = None) -> None:
+    async def abort_user_sessions(self, email: str = None, username: str = None, user_id: str = None) -> None:
         
         if not email and not username and not user_id: 
             raise exceptions.NoUserData
@@ -221,6 +223,30 @@ class UserCRUD:
         
         await self.db.commit()
         
+        
+    async def delete_user(self, email: str = None, username: str = None, user_id: str = None) -> None:
+        
+        if not email and not username and not user_id: 
+            raise exceptions.NoUserData
+        
+        user = await self.get_existing_user(email=email, username=username, user_id=user_id)
+        
+        if not user:
+            raise exceptions.UserDoesNotExist
+        
+        
+        refresh_token = await RefreshTokenDAO.find_one_or_none(self.db, Refresh_token.user_id == user.id)
+        
+        if refresh_token:
+                await RefreshTokenDAO.delete(self.db, user_id = refresh_token.user_id)
+        
+        await UserDAO.delete(self.db, or_(
+            user_id == User.id,
+            username == User.username,
+            email == User.email))
+        
+        await self.db.commit()
+        
     
     async def get_user_statement(self,
         username: str,
@@ -232,12 +258,13 @@ class UserCRUD:
                 raise exceptions.UserAlreadyActive
 
         except KeyError:
+            
             user = await self.get_existing_user(username=username)
             if not user:
                 raise exceptions.UserDoesNotExist
             
             if user.is_active == True:
-                raise exceptions.UserAlreadyActive
+                await self.abort_user_sessions
 
             return user.is_active
     

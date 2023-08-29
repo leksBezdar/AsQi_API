@@ -16,6 +16,34 @@ UpdateSchemaType = TypeVar("UpdateSchemaType", bound=BaseModel)
 
 class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
     model = None
+    
+    
+    @classmethod
+    async def add(
+        cls,
+        db: AsyncSession,
+        obj_in: Union[CreateSchemaType, Dict[str, Any]]
+    ) -> Optional[ModelType]:
+        
+        if isinstance(obj_in, dict):
+            create_data = obj_in
+        else:
+            create_data = obj_in.model_dump(exclude_unset=True)
+            
+        try:
+            stmt = insert(cls.model).values(
+                **create_data).returning(cls.model)
+            result = await db.execute(stmt)
+            return result.scalars().first()
+        except (SQLAlchemyError, Exception) as e:   
+            if isinstance(e, SQLAlchemyError):
+                msg = "Database Exc: Cannot insert data into table"
+            elif isinstance(e, Exception):
+                msg = "Unknown Exc: Cannot insert data into table"
+            print(msg)
+        
+            return None
+
 
     @classmethod
     async def find_one_or_none(cls, db: AsyncSession, *filter, **filter_by) -> Optional[ModelType]:
@@ -44,33 +72,6 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
         )
         result = await db.execute(stmt)
         return result.scalars().all()
-    
-    
-    @classmethod
-    async def add(
-        cls,
-        db: AsyncSession,
-        obj_in: Union[CreateSchemaType, Dict[str, Any]]
-    ) -> Optional[ModelType]:
-        
-        if isinstance(obj_in, dict):
-            create_data = obj_in
-        else:
-            create_data = obj_in.model_dump(exclude_unset=True)
-            
-        try:
-            stmt = insert(cls.model).values(
-                **create_data).returning(cls.model)
-            result = await db.execute(stmt)
-            return result.scalars().first()
-        except (SQLAlchemyError, Exception) as e:   
-            if isinstance(e, SQLAlchemyError):
-                msg = "Database Exc: Cannot insert data into table"
-            elif isinstance(e, Exception):
-                msg = "Unknown Exc: Cannot insert data into table"
-            print(msg)
-        
-            return None
         
         
     @classmethod

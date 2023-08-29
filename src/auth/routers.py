@@ -64,9 +64,6 @@ async def login(
     
     # Создаем токены
     access_token, refresh_token = await token_crud.create_tokens(user_id=user.id)
-    
-    # Меняем состояние поля is_active пользователя
-    await user_crud.update_user_statement(username=credentials.username)
 
     response = JSONResponse(content={
         "message": "login successful",
@@ -129,7 +126,7 @@ async def get_current_user(
 
 
 # Получение информации о пользователе по имени пользователя
-@router.get("/read_user", response_model=schemas.UserBase)
+@router.get("/read_user", response_model=None)
 async def get_user(
     username: str = None,
     email: str = None,
@@ -204,6 +201,26 @@ async def refresh_token(
     
     
     return access_token, refresh_token
+
+
+@router.delete("/delete_user_sessions")
+async def delete_user_sessions(
+    username: str = None,
+    email: str = None,
+    user_id: str = None,
+    db: AsyncSession = Depends(get_async_session),
+):
+    
+    db_manager = DatabaseManager(db)
+    user_crud = db_manager.user_crud
+    
+    await user_crud.abort_user_sessions(username=username, email=email, user_id=user_id)
+    
+    response = JSONResponse(content={
+        "message": "Delete successful",
+    })
+    
+    return response
 
 
 @router.delete("/delete_user")

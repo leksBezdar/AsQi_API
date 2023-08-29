@@ -6,9 +6,9 @@ from ..dao import BaseDAO
 class UserDAO(BaseDAO[User, UserCreateDB, UserUpdate]):
     model = User
 
-
 class RoleDAO(BaseDAO[Role, RoleCreate, RoleUpdate]):
     model = Role
     
 class RefreshTokenDAO(BaseDAO[Refresh_token, RefreshSessionCreate, RefreshSessionUpdate]):
     model = Refresh_token
+    

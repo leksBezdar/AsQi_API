@@ -20,8 +20,12 @@ async def get_current_user(
     user_crud = db_manager.user_crud
     token_crud = db_manager.token_crud
     
-    refresh_token = request.cookies.get("refresh_token")
-    user_id = await token_crud.get_refresh_token_payload(refresh_token)
+    try:
+        refresh_token = request.cookies.get("refresh_token")
+        user_id = await token_crud.get_refresh_token_payload(refresh_token)
+        
+    except KeyError:
+        raise exceptions.InactiveUser
     
     return await user_crud.get_existing_user(user_id=user_id)
 
