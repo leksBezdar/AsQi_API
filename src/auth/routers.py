@@ -10,7 +10,7 @@ from .config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 from . import schemas, exceptions
 
-from .dependencies import get_current_active_user, get_current_user
+from .dependencies import get_current_active_user, get_current_superuser, get_current_user
 from .models import User, Role
 from .service import DatabaseManager
 from ..database import get_async_session
@@ -30,7 +30,7 @@ async def create_user(
     user_crud = db_manager.user_crud
     
     return await user_crud.create_user(user=user_data)
-
+ 
 
 # Создание новой роли
 @router.post("/create_role/", response_model=schemas.RoleBase)
@@ -114,7 +114,7 @@ async def logout(
 @router.get("/me", response_model=schemas.UserBase)
 async def get_current_user(
     db: AsyncSession = Depends(get_async_session),
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(get_current_active_user)
 ) -> Optional[User]:
     
     db_manager = DatabaseManager(db)
@@ -132,6 +132,7 @@ async def get_user(
     email: str = None,
     user_id: str = None,
     db: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user),
 ) -> Optional[User]:
 
     db_manager = DatabaseManager(db)
@@ -148,6 +149,7 @@ async def get_all_users(
     offset: int = 0,
     limit: int = 10,
     db: AsyncSession = Depends(get_async_session),
+    super_user: User = Depends(get_current_superuser)
 ):
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
@@ -162,6 +164,7 @@ async def patch_user_role(
     db: AsyncSession = Depends(get_async_session),
     username: str = None,
     user_id: str = None,
+    super_user: User = Depends(get_current_superuser)
 ):
     db_manager = DatabaseManager(db)
     
@@ -209,6 +212,7 @@ async def delete_user_sessions(
     email: str = None,
     user_id: str = None,
     db: AsyncSession = Depends(get_async_session),
+    super_user: User = Depends(get_current_superuser)
 ):
     
     db_manager = DatabaseManager(db)
@@ -229,6 +233,7 @@ async def delete_user(
     email: str = None,
     user_id: str = None,
     db: AsyncSession = Depends(get_async_session),
+    super_user: User = Depends(get_current_superuser)
 ):
     
     db_manager = DatabaseManager(db)
