@@ -36,6 +36,7 @@ class BaseDAO(Generic[ModelType, CreateSchemaType, UpdateSchemaType]):
             result = await db.execute(stmt)
             return result.scalars().first()
         except (SQLAlchemyError, Exception) as e:   
+            print(e)
             if isinstance(e, SQLAlchemyError):
                 msg = "Database Exc: Cannot insert data into table"
             elif isinstance(e, Exception):

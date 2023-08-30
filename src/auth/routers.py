@@ -10,14 +10,13 @@ from .config import ACCESS_TOKEN_EXPIRE_MINUTES, REFRESH_TOKEN_EXPIRE_DAYS
 
 from . import schemas, exceptions
 
-from .dependencies import get_current_active_user, get_current_superuser, get_current_user
+from .dependencies import get_current_active_user, get_current_superuser
 from .models import User, Role
 from .service import DatabaseManager
 from ..database import get_async_session
 
 
 router = APIRouter()
-
 
 
 # Регистрация нового пользователя
@@ -61,27 +60,25 @@ async def login(
     user = await user_crud.authenticate_user(username=credentials.username, password=credentials.password)
     
     await user_crud.get_user_statement(username = user.username, request=request)
-    
-    # Создаем токены
-    access_token, refresh_token = await token_crud.create_tokens(user_id=user.id)
 
-    response = JSONResponse(content={
-        "message": "login successful",
-    })
+    print(user.id)
+
+    token = await token_crud.create_tokens(user_id = user.id)
     
     response.set_cookie(
-        key="access_token",
-        value=access_token,
+        'access_token',
+        token.access_token,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        httponly=True)
-    
+        httponly=True
+    )
     response.set_cookie(
-        key="refresh_token",
-        value=refresh_token,
-        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 30 * 24* 60,
-        httponly=True)
+        'refresh_token',
+        token.refresh_token,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 30 * 24 * 60,
+        httponly=True
+    )
     
-    return response
+    return token
 
 
 
@@ -93,13 +90,11 @@ async def logout(
     db: AsyncSession = Depends(get_async_session),
     active_user = Depends(get_current_active_user)
 ):
-    access_token = request.cookies.get('access_token')
-    refresh_token = request.cookies.get('refresh_token')
    
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
     
-    await user_crud.logout(acces_token=access_token, refresh_token=refresh_token)
+    await user_crud.logout(refresh_token=request.cookies.get('refresh_token'))
     
     response = JSONResponse(content={
         "message": "logout successful",
@@ -187,23 +182,23 @@ async def refresh_token(
     db_manager = DatabaseManager(db)
     user_crud = db_manager.user_crud
     
-    access_token, refresh_token = await user_crud.refresh_token(request.cookies.get("refresh_token"))
+    new_token = await user_crud.refresh_token(request.cookies.get("refresh_token"))
 
     response.set_cookie(
         'access_token',
-        access_token,
+        new_token.access_token,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         httponly=True,
     )
     response.set_cookie(
         'refresh_token',
-        refresh_token,
+        new_token.refresh_token,
         max_age=REFRESH_TOKEN_EXPIRE_DAYS * 7 * 24 * 60,
         httponly=True,
     )
     
     
-    return access_token, refresh_token
+    return new_token
 
 
 @router.delete("/delete_user_sessions")

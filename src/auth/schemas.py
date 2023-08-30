@@ -1,5 +1,6 @@
 import re
 from uuid import UUID
+import uuid
 
 from pydantic import BaseModel, EmailStr, Field, validator
 from typing import Dict, Optional
@@ -59,6 +60,8 @@ class User(UserBase):
 class UserCreateDB(UserBase):
     id: str
     hashed_password: Optional[str] = None
+   
+    
 
 class RoleBase(BaseModel):
     name: str = Field("user")
@@ -68,7 +71,7 @@ class RoleBase(BaseModel):
 class RoleCreate(RoleBase):
     pass
 
-class UserCreateDB(RoleBase):
+class RoleCreateDB(RoleBase):
     pass
 
 class Role(RoleBase):
@@ -77,11 +80,12 @@ class Role(RoleBase):
 class RoleUpdate(RoleBase):
     name: Optional[str] = None
     
+    
+    
 class RefreshSessionCreate(BaseModel):
     refresh_token: str
     expires_at: int
     user_id: str
-
 
 class RefreshSessionUpdate(RefreshSessionCreate):
     user_id: Optional[str] = Field(None)
@@ -89,3 +93,4 @@ class RefreshSessionUpdate(RefreshSessionCreate):
 class Token(BaseModel):
     access_token: str
     refresh_token: str
+    token_type: str

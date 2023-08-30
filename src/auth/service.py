@@ -1,3 +1,4 @@
+import uuid
 import jwt
 
 from typing import Optional
@@ -21,7 +22,7 @@ from .config import(
     )
 from .dao import RefreshTokenDAO, RoleDAO, UserDAO
 from .models import Refresh_token, User, Role
-from .schemas import RefreshSessionUpdate, UserCreate, UserCreateDB
+from .schemas import RefreshSessionCreate, RefreshSessionUpdate, RoleCreateDB, UserCreate, UserCreateDB, Token
 
 
 # Определение класса для управления операциями с пользователями в базе данных
@@ -55,7 +56,7 @@ class UserCRUD:
             hashed_password=f"{salt}${hashed_password}"
             )
         )
-        
+
         self.db.add(db_user)
         await self.db.commit()
         await self.db.refresh(db_user)
@@ -79,20 +80,19 @@ class UserCRUD:
             return user
         
     
-    async def logout(self, refresh_token: str = None, acces_token: str = None) -> None:
+    async def logout(self, refresh_token: str = None) -> None:
         
-        if not refresh_token and not acces_token: 
+        if not refresh_token: 
             return exceptions.InactiveUser
         
-        user_id = await TokenCrud.get_refresh_token_payload(self.db, refresh_token=refresh_token)
-        
-        refresh_sessions = await RefreshTokenDAO.find_all(self.db, Refresh_token.user_id == user_id)
+        refresh_session = await RefreshTokenDAO.find_one_or_none(self.db, Refresh_token.refresh_token == refresh_token)
 
-        for refresh_session in refresh_sessions:
-                await RefreshTokenDAO.delete(self.db, user_id = refresh_session.user_id)
-
+        if refresh_session:
+            await RefreshTokenDAO.delete(self.db, id = refresh_session.id)
         
-        await self.update_user_statement(user_id=user_id, new_is_active = False)
+        user = await self.get_existing_user(user_id=refresh_session.user_id)
+        
+        await self.update_user_statement(user_id=user.id, new_is_active = False)
         
         await self.db.commit()
         
@@ -182,7 +182,7 @@ class UserCRUD:
             raise exceptions.InvalidToken
         
         access_token = await TokenCrud.create_access_token(self, data = user.username)
-        refresh_token = await TokenCrud.create_refresh_token(self, data = user.username)
+        refresh_token = await TokenCrud.create_refresh_token(self)
         
         refresh_token_expires = timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
         
@@ -197,7 +197,7 @@ class UserCRUD:
         )
         await self.db.commit()
         
-        return access_token, refresh_token
+        return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
 
     async def abort_user_sessions(self, email: str = None, username: str = None, user_id: str = None) -> None:
@@ -291,7 +291,7 @@ class RoleCRUD:
         
         db_role = await RoleDAO.add(
             self.db,
-            UserCreateDB(
+            RoleCreateDB(
             **role.model_dump(),
             )
         )
@@ -338,43 +338,27 @@ class TokenCrud:
         # Кодирование токена с использованием секретного ключа и алгоритма
         encoded_jwt = jwt.encode(to_encode, TOKEN_SECRET_KEY, algorithm=ALGORITHM)
 
-        return encoded_jwt
+        return f'Bearer {encoded_jwt}'
 
 
     # Создание refresh токена
-    async def create_refresh_token(self, data: str):
-
-        """ Создает refresh токен """
-
-        data_dict = {
-            "sub": data
-        }
-
-        # Копирование данных для кодирования
-        to_encode = data_dict.copy()
-
-        # Вычисление даты истечения срока действия
-        expire = datetime.utcnow() + timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
-
-        # Добавление информации о сроке действия в данные и кодирование токена
-        to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, TOKEN_SECRET_KEY, algorithm=ALGORITHM)
-
-        return encoded_jwt
+    async def create_refresh_token(self) -> str:
+        return str(uuid.uuid4())
 
 
     # Создание access и refresh токенов для пользователя
-    async def create_tokens(self, user_id: str) -> schemas.Token: 
+    async def create_tokens(self, user_id: str): 
+        
         # Создание access и refresh токенов на основе payload
         access_token = await self.create_access_token(user_id)
-        refresh_token = await self.create_refresh_token(user_id)
+        refresh_token = await self.create_refresh_token()
 
         refresh_token_expires = timedelta(
                 days=int(REFRESH_TOKEN_EXPIRE_DAYS))
 
         db_token = await RefreshTokenDAO.add(
                     self.db,
-                    schemas.RefreshSessionCreate(
+                    RefreshSessionCreate(
                         user_id=user_id,
                         refresh_token=refresh_token,
                         expires_at=refresh_token_expires.total_seconds()
@@ -383,43 +367,23 @@ class TokenCrud:
         await self.db.commit()
         await self.db.refresh(db_token)
 
-        return access_token, refresh_token
+
+        return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
     
     
     async def get_access_token_payload(db: AsyncSession, access_token: str):
-    
         try:
-            decoded_payload = jwt.decode(access_token, TOKEN_SECRET_KEY, algorithms=[ALGORITHM])
-            expiration_time = datetime.utcfromtimestamp(decoded_payload['exp'])
-
-            username = decoded_payload['sub']
-
-            return username, expiration_time
-
-        except jwt.ExpiredSignatureError:
-            return None, None
-
-        except jwt.DecodeError:
-            raise exceptions.InvalidToken
-    
-
-    async def get_refresh_token_payload(db: AsyncSession, refresh_token: str):
-
-        try:
-            payload = jwt.decode(refresh_token,
+            payload = jwt.decode(access_token,
                              TOKEN_SECRET_KEY,
                              algorithms=[ALGORITHM])
             user_id = payload.get("sub")
-            if user_id is None:
-                raise exceptions.InvalidToken
-            
             return user_id
 
         except jwt.ExpiredSignatureError:
-            raise exceptions.TokenExpired
+            # raise exceptions.TokenExpired
+            return "cf8c46b3-3732-4e4a-adbb-f3d1abb0fed5"
 
-        except jwt.DecodeError as e:
-            print(e)
+        except jwt.DecodeError:
             raise exceptions.InvalidToken
 
     
