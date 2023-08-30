@@ -24,17 +24,12 @@ async def get_current_user(
     token_crud = db_manager.token_crud
     
     try:
-        # access_token = request.cookies.get('access_token')
         user_id = await token_crud.get_access_token_payload(token)
-        # user_id = await token_crud.get_access_token_payload(access_token)
 
     except KeyError:
         raise exceptions.InvalidCredentials
     
-    print(user_id)
-    
     user = await user_crud.get_existing_user(user_id=user_id)
-    print(user)
     return user
 
 

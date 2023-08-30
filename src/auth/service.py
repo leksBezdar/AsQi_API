@@ -181,7 +181,7 @@ class UserCRUD:
         if user is None:
             raise exceptions.InvalidToken
         
-        access_token = await TokenCrud.create_access_token(self, data = user.username)
+        access_token = await TokenCrud.create_access_token(self, data = user.id)
         refresh_token = await TokenCrud.create_refresh_token(self)
         
         refresh_token_expires = timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
@@ -323,7 +323,7 @@ class TokenCrud:
     async def create_access_token(self, data: str):
 
         """ Создает access токен """
-
+        
         data_dict = {
             "sub": data
         }
@@ -380,8 +380,7 @@ class TokenCrud:
             return user_id
 
         except jwt.ExpiredSignatureError:
-            # raise exceptions.TokenExpired
-            return "cf8c46b3-3732-4e4a-adbb-f3d1abb0fed5"
+            raise exceptions.TokenExpired
 
         except jwt.DecodeError:
             raise exceptions.InvalidToken

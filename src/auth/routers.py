@@ -60,9 +60,7 @@ async def login(
     user = await user_crud.authenticate_user(username=credentials.username, password=credentials.password)
     
     await user_crud.get_user_statement(username = user.username, request=request)
-
-    print(user.id)
-
+    
     token = await token_crud.create_tokens(user_id = user.id)
     
     response.set_cookie(
