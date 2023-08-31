@@ -133,21 +133,6 @@ class UserCRUD:
         
         return {"message": new_is_active}
     
-    # Обновление роли пользователя
-    async def update_user_role(self, user_id: User.id, new_role_id: Role.id) -> Role:
-        
-        # stmt = update(User).where(User.id == user_id).values(role_id=new_role_id)
-        
-        new_user_role = await RoleDAO.find_one_or_none(self.db,
-            Role.id == new_role_id)
-        
-        await UserDAO.update(self.db,
-            User.id == user_id,
-            obj_in={"role_id": new_role_id}
-        )
-        
-        await self.db.commit()          
-        return new_user_role
     
     # Получение списка всех пользователей с поддержкой пагинации
     async def get_all_users(self, *filter, offset: int = 0, limit: int = 100, **filter_by) -> list[User]:
@@ -162,42 +147,6 @@ class UserCRUD:
         refresh_token = await RefreshTokenDAO.find_one_or_none(self.db, Refresh_token.user_id == user.id)
         
         return refresh_token
-        
-    async def refresh_token(self, token: str):
-        
-        refresh_token_session = await RefreshTokenDAO.find_one_or_none(self.db, Refresh_token.refresh_token == token)
-        
-
-        if refresh_token_session is None:
-            raise exceptions.InvalidToken
-        
-        if datetime.now(timezone.utc) >= refresh_token_session.created_at + timedelta(seconds=refresh_token_session.expires_at):
-            
-            await RefreshTokenDAO.delete(id=refresh_token_session.id)
-            raise exceptions.TokenExpired
-        
-        user = await UserDAO.find_one_or_none(self.db, id=refresh_token_session.user_id)
-        
-        if user is None:
-            raise exceptions.InvalidToken
-        
-        access_token = await TokenCrud.create_access_token(self, data = user.id)
-        refresh_token = await TokenCrud.create_refresh_token(self)
-        
-        refresh_token_expires = timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
-        
-        
-        await RefreshTokenDAO.update(
-            self.db,
-            Refresh_token.id == refresh_token_session.id,
-            obj_in=RefreshSessionUpdate(
-                refresh_token=refresh_token,
-                expires_at=refresh_token_expires.total_seconds()
-            )
-        )
-        await self.db.commit()
-        
-        return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
 
     async def abort_user_sessions(self, email: str = None, username: str = None, user_id: str = None) -> None:
@@ -313,6 +262,21 @@ class RoleCRUD:
         return role
     
     
+    # Обновление роли пользователя
+    async def update_user_role(self, user_id: User.id, new_role_id: Role.id) -> Role:
+        
+        new_user_role = await RoleDAO.find_one_or_none(self.db,
+            Role.id == new_role_id)
+        
+        await UserDAO.update(self.db,
+            User.id == user_id,
+            obj_in={"role_id": new_role_id}
+        )
+        
+        await self.db.commit()          
+        return new_user_role
+    
+    
 class TokenCrud:
     
     def __init__(self, db: AsyncSession):
@@ -384,6 +348,44 @@ class TokenCrud:
 
         except jwt.DecodeError:
             raise exceptions.InvalidToken
+        
+        
+    
+    async def refresh_token(self, token: str) -> Token:
+        
+        refresh_token_session = await RefreshTokenDAO.find_one_or_none(self.db, Refresh_token.refresh_token == token)
+        
+
+        if refresh_token_session is None:
+            raise exceptions.InvalidToken
+        
+        if datetime.now(timezone.utc) >= refresh_token_session.created_at + timedelta(seconds=refresh_token_session.expires_at):
+            
+            await RefreshTokenDAO.delete(id=refresh_token_session.id)
+            raise exceptions.TokenExpired
+        
+        user = await UserDAO.find_one_or_none(self.db, id=refresh_token_session.user_id)
+        
+        if user is None:
+            raise exceptions.InvalidToken
+        
+        access_token = await self.create_access_token(data = user.id)
+        refresh_token = await self.create_refresh_token()
+        
+        refresh_token_expires = timedelta(days=int(REFRESH_TOKEN_EXPIRE_DAYS))
+        
+        
+        await RefreshTokenDAO.update(
+            self.db,
+            Refresh_token.id == refresh_token_session.id,
+            obj_in=RefreshSessionUpdate(
+                refresh_token=refresh_token,
+                expires_at=refresh_token_expires.total_seconds()
+            )
+        )
+        await self.db.commit()
+        
+        return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
     
 # Определение класса для управления обоми crud-классами 

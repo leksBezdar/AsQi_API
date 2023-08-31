@@ -72,7 +72,7 @@ async def login(
     response.set_cookie(
         'refresh_token',
         token.refresh_token,
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 30 * 24 * 60,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         httponly=True
     )
     
@@ -167,7 +167,7 @@ async def patch_user_role(
     user = await user_crud.get_existing_user(username=username, user_id=user_id)
     new_role = await role_crud.get_existing_role(role_id = new_role_id)
     
-    return await user_crud.update_user_role(user_id=user.id, new_role_id=new_role.id)
+    return await role_crud.update_user_role(user_id=user.id, new_role_id=new_role.id)
 
 
 @router.patch("/refresh_tokens")
@@ -178,9 +178,9 @@ async def refresh_token(
 ):
     
     db_manager = DatabaseManager(db)
-    user_crud = db_manager.user_crud
+    token_crud = db_manager.token_crud
     
-    new_token = await user_crud.refresh_token(request.cookies.get("refresh_token"))
+    new_token = await token_crud.refresh_token(request.cookies.get("refresh_token"))
 
     response.set_cookie(
         'access_token',
@@ -191,7 +191,7 @@ async def refresh_token(
     response.set_cookie(
         'refresh_token',
         new_token.refresh_token,
-        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 7 * 24 * 60,
+        max_age=REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
         httponly=True,
     )
     
