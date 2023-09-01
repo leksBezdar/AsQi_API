@@ -388,7 +388,7 @@ class TokenCrud:
         return Token(access_token=access_token, refresh_token=refresh_token, token_type="bearer")
 
     
-# Определение класса для управления обоми crud-классами 
+# Определение класса для управления всеми crud-классами 
 class DatabaseManager:
     def __init__(self, db: AsyncSession):
         self.db = db
