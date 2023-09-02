@@ -2,7 +2,7 @@ import re
 from uuid import UUID
 import uuid
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Dict, Optional
 
 from .config import (
@@ -26,14 +26,14 @@ class UserCreate(UserBase):
     password: str
     
         
-    @validator("username")
+    @field_validator("username")
     def validate_username_length(cls, value):
         if len(value) < int(user_min_len) or len(value) > int(user_max_len):
             raise ValueError("Username must be between 5 and 15 characters")
         
         return value
     
-    @validator("password")
+    @field_validator("password")
     def validate_password_complexity(cls, value):
         if len(value) < int(pass_min_len) or len(value) > int(pass_max_len):
             raise ValueError("Password must be between 8 and 30 characters")
