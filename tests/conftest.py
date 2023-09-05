@@ -1,3 +1,6 @@
+import asyncio
+from httpx import AsyncClient
+from fastapi.testclient import TestClient
 from typing import AsyncGenerator
 import pytest
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
@@ -9,8 +12,6 @@ from src import metadata
 from src.config import (TEST_DB_HOST, TEST_DB_PORT, TEST_DB_NAME, TEST_DB_USER, TEST_DB_PASS)
 
 from src.main import app
-
-print(TEST_DB_PORT)
 
 
 # DATABASE
@@ -32,8 +33,22 @@ app.dependency_overrides[get_async_session] = override_get_async_session
 async def prepare_database():
     async with async_engine.begin() as conn:
         await conn.run_sync(metadata.create_all)
-        await print(1)
     yield
     async with async_engine.begin() as conn:
         await conn.run_sync(metadata.drop_all)
-        await print(2)
+        
+        
+# SETUP
+@pytest.fixture(scope='session')
+def event_loop(request):
+    """Создание экземпляра ивент лупа для каждого тестового случая"""
+    loop = asyncio.get_event_loop_policy().new_event_loop()
+    yield loop
+    loop.close()
+
+client = TestClient(app)
+
+@pytest.fixture(scope="session")
+async def ac() -> AsyncGenerator[AsyncClient, None]:
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
