@@ -17,7 +17,7 @@ from src.main import app
 # DATABASE
 DATABASE_URL= f"postgresql+asyncpg://{TEST_DB_USER}:{TEST_DB_PASS}@{TEST_DB_HOST}:{TEST_DB_PORT}/{TEST_DB_NAME}"
 
-async_engine = create_async_engine(DATABASE_URL)
+async_engine = create_async_engine(DATABASE_URL, poolclass=NullPool)
 async_session_maker = sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 metadata.bind = async_engine
 
