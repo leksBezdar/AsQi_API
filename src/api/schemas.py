@@ -21,14 +21,17 @@ class AnimeBase(BaseModel):
     big_img: str
     screens: Dict 
     
+class AnimeCreate(AnimeBase):
+    pass
+
+class AnimeUpdate(BaseModel):
+    pass
 
 class Anime(AnimeBase):
     id: int
 
     class Config:
         from_attributes = True
-        
-    
         
 
 class EpisodeBase(BaseModel):
@@ -44,4 +47,7 @@ class Episode(EpisodeBase):
         
         
 class EpisodeCreate(EpisodeBase):
-    anime_id: int
+    pass
+
+class EpisodeUpdate(BaseModel):
+    pass
