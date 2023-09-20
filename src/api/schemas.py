@@ -1,9 +1,9 @@
 from pydantic import BaseModel
-from typing import Dict
+from typing import Dict, Optional
     
 
-class AnimeBase(BaseModel):
-    title: str
+class TitleBase(BaseModel):
+    name: str
     trailer_link: str
     num_episodes: int
     synopsis: str
@@ -21,13 +21,13 @@ class AnimeBase(BaseModel):
     big_img: str
     screens: Dict 
     
-class AnimeCreate(AnimeBase):
+class TitleCreate(TitleBase):
     pass
 
-class AnimeUpdate(BaseModel):
+class TitleUpdate(BaseModel):
     pass
 
-class Anime(AnimeBase):
+class Title(TitleBase):
     id: int
 
     class Config:
@@ -47,7 +47,7 @@ class Episode(EpisodeBase):
         
         
 class EpisodeCreate(EpisodeBase):
-    pass
+    episode_title: Optional[str] = None
 
 class EpisodeUpdate(BaseModel):
     pass

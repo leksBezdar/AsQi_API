@@ -3,7 +3,7 @@ from fastapi import HTTPException
 
 class TitleWasNotFound(HTTPException):
     def __init__(self):
-        super().__init__(status_code=404, detail="Anime was not found")
+        super().__init__(status_code=404, detail="Title was not found")
         
 class TitleAlreadyExists(HTTPException):
     def __init__(self):
@@ -17,3 +17,10 @@ class InvalidCredentials(HTTPException):
     def __init__(self):
         super().__init__(status_code=409, detail="Incorrect title name or ID")
         
+class NoTitleData(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=404, detail="No title data found")
+        
+class NoEpisodeData(HTTPException):
+    def __init__(self):
+        super().__init__(status_code=404, detail="No episode data found")

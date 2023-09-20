@@ -6,8 +6,8 @@ from sqlalchemy import MetaData
 metadata = MetaData()
 
 
-class Anime(Base):
-    __tablename__ = "animes"
+class Title(Base):
+    __tablename__ = "titles"
 
     id = Column(Integer, primary_key=True, index=True)
     title = Column(String, index=True, nullable=False, unique=True)
@@ -29,7 +29,7 @@ class Anime(Base):
     screens = Column(JSON, nullable=False, unique=True)
     
     
-    episodes = relationship("Episode", back_populates="anime")
+    episodes = relationship("Episode", back_populates="title")
 
 
 class Episode(Base):
@@ -38,8 +38,8 @@ class Episode(Base):
     episode_number = Column(Integer, nullable=False)
     episode_title = Column(String, index=True, nullable=False)
     episode_link = Column(String, nullable=False, unique=True, primary_key=True)
-    anime_id = Column(Integer, ForeignKey("animes.id"), index=True, default=1)
+    title_id = Column(Integer, ForeignKey("titles.id"), index=True, default=1)
     translations = Column(JSON, nullable=False)
 
-    anime = relationship("Anime", back_populates="episodes")
+    anime = relationship("Title", back_populates="episodes")
     
