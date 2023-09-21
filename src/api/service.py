@@ -57,6 +57,25 @@ class TitleCRUD:
         titles = await TitleDAO.find_all(self.db, *filter, offset=offset, limit=limit, **filter_by)
         
         return titles
+    
+    
+    async def delete_title(self, title_id: str = None, title_name: str = None):
+        
+        if not title_id and not title_name:
+            raise exceptions.NoTitleData
+        
+        title = await self.get_existing_title(title_id=title_id, name=title_name)
+        
+        if not title:
+            raise exceptions.TitleWasNotFound
+        
+        await TitleDAO.delete(self.db, or_(
+            title_id == Title.id,
+            title_name == Title.name))
+        
+        await self.db.commit()
+        
+        return {"Message": "Deleting successful"}
 
 
 class EpisodeCRUD:

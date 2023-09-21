@@ -95,3 +95,16 @@ async def get_episode(
         )
     
     return episode or {"Message": "No Episode Found"}
+
+
+@router.delete("/delete_title", response_model=None)
+async def delete_episode(
+    db: AsyncSession = Depends(get_async_session),
+    title_id: str = None,
+    title_name: str = None,
+):
+    
+    db_manager = DatabaseManager(db)
+    title_crud = db_manager.title_crud
+    
+    return await title_crud.delete_title(title_id=title_id, title_name=title_name)
