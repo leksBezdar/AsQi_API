@@ -98,7 +98,7 @@ async def get_episode(
 
 
 @router.delete("/delete_title", response_model=None)
-async def delete_episode(
+async def delete_title(
     db: AsyncSession = Depends(get_async_session),
     title_id: str = None,
     title_name: str = None,
@@ -108,3 +108,23 @@ async def delete_episode(
     title_crud = db_manager.title_crud
     
     return await title_crud.delete_title(title_id=title_id, title_name=title_name)
+
+
+@router.delete("/delete_episode", response_model=None)
+async def delete_episode(
+    db: AsyncSession = Depends(get_async_session),
+    title_id: str = None,
+    title_name: str = None,
+    episode_number: int = None,
+    episode_title: str = None,
+):
+    
+    db_manager = DatabaseManager(db)
+    episode_crud = db_manager.episode_crud
+    
+    return await episode_crud.delete_episode(
+        title_id=title_id,
+        title_name=title_name,
+        episode_number=episode_number,
+        episode_title=episode_title
+        )

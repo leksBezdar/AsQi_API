@@ -40,7 +40,8 @@ class TitleCRUD:
 
     async def get_existing_title(self, title_id: str = None, name: str = None, trailer_link: str = None) -> Title:
         
-        if not name and not trailer_link:
+        if not name and not trailer_link and not title_id:
+            
             raise exceptions.NoTitleData
         
         title = await TitleDAO.find_one_or_none(self.db, or_(
@@ -129,6 +130,39 @@ class EpisodeCRUD:
         episodes = await EpisodeDAO.find_all(self.db, offset=offset, limit=limit, title_id=title_id)
         
         return episodes
+    
+    
+    async def delete_episode(self,
+        title_id: str = None,
+        title_name: str = None,
+        episode_number: int = None,
+        episode_title: str = None,
+        ):
+        
+        if not title_id and not title_name:
+            raise exceptions.NoTitleData
+        
+        if not episode_number and not episode_title:
+            raise exceptions.NoEpisodeData
+        
+        
+        title = await TitleCRUD.get_existing_title(self, title_id=title_id, name=title_name)
+        
+        if not title:
+            raise exceptions.TitleWasNotFound
+        
+        episode = await self.get_existing_episode(title_id=title_id, episode_number=episode_number)
+        
+        if not episode:
+            raise exceptions.EpisodeDoesNotExist
+        
+        await EpisodeDAO.delete(self.db, 
+        or_(title_id == Title.id, title_name == Title.name),
+        and_(or_(episode_number == Episode.episode_number, episode_title == Episode.episode_title )))
+        
+        await self.db.commit()
+        
+        return {"Message": "Deleting successful"}
     
 
 class DatabaseManager:
