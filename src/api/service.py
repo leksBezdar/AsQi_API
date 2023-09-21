@@ -1,7 +1,7 @@
 from typing import List
 from uuid import uuid4
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import or_
+from sqlalchemy import and_, or_
 from sqlalchemy.future import select
 
 from .models import Title, Episode
@@ -9,7 +9,7 @@ from .dao import TitleDAO, EpisodeDAO
 from . import schemas, exceptions
 
 
-class TitleCrud:
+class TitleCRUD:
     
     def __init__(self, db: AsyncSession):
         self.db = db
@@ -25,7 +25,7 @@ class TitleCrud:
         
         db_title = await TitleDAO.add(
             self.db,
-            schemas.TitleCreate(
+            schemas.TitleCreateDB(
             **title.model_dump(),
             id = id,
             )
@@ -38,12 +38,13 @@ class TitleCrud:
         return db_title
     
 
-    async def get_existing_title(self, name: str, trailer_link: str) -> Title:
+    async def get_existing_title(self, title_id: str = None, name: str = None, trailer_link: str = None) -> Title:
         
         if not name and not trailer_link:
             raise exceptions.NoTitleData
         
         title = await TitleDAO.find_one_or_none(self.db, or_(
+            Title.id == title_id,
             Title.name == name,
             Title.trailer_link == trailer_link,
             ))
@@ -51,21 +52,21 @@ class TitleCrud:
         return title
     
     
-    async def get_all_titles(self, offset: int = 0, limit: int = 10, **filter_by) -> List[Title]:
+    async def get_all_titles(self, offset: int = 0, limit: int = 10, *filter, **filter_by) -> List[Title]:
         
         titles = await TitleDAO.find_all(self.db, *filter, offset=offset, limit=limit, **filter_by)
         
         return titles
 
 
-class EpisodeCrud:
+class EpisodeCRUD:
     
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create_episode(self, anime_id: int, episode: schemas.EpisodeCreate):
+    async def create_episode(self, episode: schemas.EpisodeCreate):
         
-        episode_exist = await self.get_existing_episode(trailer_link=episode.episode_link)
+        episode_exist = await self.get_existing_episode(episode_link=episode.episode_link)
         
         if episode_exist:
             raise exceptions.EpisodeAlreadyExists
@@ -74,7 +75,6 @@ class EpisodeCrud:
             self.db,
             schemas.EpisodeCreate(
             **episode.model_dump(),
-            anime_id = anime_id,
             )
         )
 
@@ -85,19 +85,41 @@ class EpisodeCrud:
         return db_episode
         
     
-    async def get_existing_episode(self, episode_link: str) -> Episode:
+    async def get_existing_episode(self,
+        title_id: str = None,
+        episode_link: str = None,
+        episode_number: str = None,
+        ) -> Episode:
         
-        if not episode_link:
+        if not episode_link and not (episode_number and title_id):
             raise exceptions.NoEpisodeData
         
-        episode = EpisodeDAO.find_one_or_none(self.db, Episode.episode_link == episode_link)
+        episode = await EpisodeDAO.find_one_or_none(
+        self.db,
+        or_(Episode.episode_link == episode_link,
+        and_(Episode.episode_number == episode_number,
+             Episode.title_id == title_id))
+        )
         
+
         return episode
 
 
-    async def get_all_episodes(self, anime_id: int, offset: int = 0, limit: int = 10, **filter_by):
-        
-        episodes = await EpisodeDAO.find_all(self.db, *filter, offset=offset, limit=limit, **filter_by)
+    async def get_all_episodes(self, offset: int, limit: int, title_id: str):
+
+        episodes = await EpisodeDAO.find_all(self.db, offset=offset, limit=limit, title_id=title_id)
         
         return episodes
+    
+
+class DatabaseManager:
+    
+    def __init__(self, db: AsyncSession):
+        self.db = db
+        self.title_crud = TitleCRUD(db)
+        self.episode_crud = EpisodeCRUD(db)
+
+    # Применение изменений к базе данных
+    async def commit(self):
+        await self.db.commit()
     

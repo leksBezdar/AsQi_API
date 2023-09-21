@@ -9,8 +9,8 @@ metadata = MetaData()
 class Title(Base):
     __tablename__ = "titles"
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String, index=True, nullable=False, unique=True)
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False, unique=True)
     japanese_title = Column(String, index=True, nullable=False, unique=True)
     trailer_link = Column(String, nullable=False, unique=True)
     num_episodes = Column(Integer, nullable=False)
@@ -38,8 +38,8 @@ class Episode(Base):
     episode_number = Column(Integer, nullable=False)
     episode_title = Column(String, index=True, nullable=False)
     episode_link = Column(String, nullable=False, unique=True, primary_key=True)
-    title_id = Column(Integer, ForeignKey("titles.id"), index=True, default=1)
+    title_id = Column(String, ForeignKey("titles.id"), index=True, default=1)
     translations = Column(JSON, nullable=False)
 
-    anime = relationship("Title", back_populates="episodes")
+    title = relationship("Title", back_populates="episodes")
     

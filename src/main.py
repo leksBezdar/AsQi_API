@@ -9,7 +9,7 @@ app = FastAPI(
     title='AsQi'
 )
 
-app.include_router(anime_router, prefix="/animes", tags=["animes"])
+app.include_router(anime_router, tags=["titles"])
 app.include_router(auth_router, tags=["registration"])
 
 

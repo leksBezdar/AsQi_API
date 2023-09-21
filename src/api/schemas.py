@@ -24,11 +24,14 @@ class TitleBase(BaseModel):
 class TitleCreate(TitleBase):
     pass
 
+class TitleCreateDB(TitleBase):
+    id: str
+
 class TitleUpdate(BaseModel):
     pass
 
 class Title(TitleBase):
-    id: int
+    id: str
 
     class Config:
         from_attributes = True
@@ -38,7 +41,8 @@ class EpisodeBase(BaseModel):
     episode_title: str
     episode_link: str
     translations: Dict
-    anime_id: int
+    title_id: str
+    episode_number: int
     
     
     
@@ -47,6 +51,7 @@ class Episode(EpisodeBase):
         
         
 class EpisodeCreate(EpisodeBase):
+    title_id: str
     episode_title: Optional[str] = None
 
 class EpisodeUpdate(BaseModel):
