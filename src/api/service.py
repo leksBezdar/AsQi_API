@@ -60,7 +60,7 @@ class TitleCRUD:
         return titles
     
     
-    async def update_title(self, title_id, title_in: schemas.TitleUpdate):
+    async def update_title(self, title_id: str, title_in: schemas.TitleUpdate):
         
         title = await self.get_existing_title(title_id=title_id)
         
@@ -150,6 +150,31 @@ class EpisodeCRUD:
         episodes = await EpisodeDAO.find_all(self.db, offset=offset, limit=limit, title_id=title_id)
         
         return episodes
+    
+    
+    async def update_episode(self, title_id: str, episode_number: int, episode_in: schemas.EpisodeUpdate):
+        
+        title = await TitleCRUD.get_existing_title(self, title_id=title_id)
+        
+        if not title: 
+            raise exceptions.TitleWasNotFound
+        
+        episode = await self.get_existing_episode(title_id=title_id, episode_number=episode_number)
+        
+        if not episode: 
+            raise exceptions.EpisodeDoesNotExist
+        
+        obj_in = schemas.EpisodeUpdate(**episode_in.model_dump())
+        
+        episode_update = await EpisodeDAO.update(
+                self.db,
+                Title.id == title_id,
+                Episode.episode_number == episode_number,
+                obj_in=obj_in)
+        
+        await self.db.commit()
+        
+        return episode_update
     
     
     async def delete_episode(self,

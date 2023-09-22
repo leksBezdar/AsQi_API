@@ -71,4 +71,8 @@ class EpisodeCreate(EpisodeBase):
     episode_title: Optional[str] = None
 
 class EpisodeUpdate(BaseModel):
-    pass
+    episode_title: Optional[str] = None
+    episode_link: Optional[str] = None
+    translations: Optional[Dict] = None
+    title_id: Optional[str] = None
+    episode_number: Optional[int] = None

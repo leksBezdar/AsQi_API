@@ -130,7 +130,7 @@ async def delete_episode(
         )
     
     
-@router.put("/update_title", response_model=None)
+@router.put("/update_title", response_model=schemas.Title)
 async def update_title(
     title_id: str,
     title_data: schemas.TitleUpdate,
@@ -141,3 +141,18 @@ async def update_title(
     title_crud = db_manager.title_crud
     
     return await title_crud.update_title(title_id=title_id, title_in=title_data)
+
+
+@router.put("/update_episode", response_model=schemas.Episode)
+async def update_episode(
+    episode_data: schemas.EpisodeUpdate,
+    db: AsyncSession = Depends(get_async_session),
+):
+    
+    db_manager = DatabaseManager(db)
+    episode_crud = db_manager.episode_crud
+    
+    return await episode_crud.update_episode(
+        episode_number=episode_data.episode_number,
+        title_id=episode_data.title_id,
+        episode_in=episode_data)
