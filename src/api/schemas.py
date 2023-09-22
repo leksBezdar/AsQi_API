@@ -28,7 +28,23 @@ class TitleCreateDB(TitleBase):
     id: str
 
 class TitleUpdate(BaseModel):
-    pass
+    name: Optional[str] = None
+    trailer_link: Optional[str] = None
+    num_episodes: Optional[int] = None
+    synopsis: Optional[str] = None
+    japanese_title: Optional[str] = None
+    country: Optional[str] = None
+    year: Optional[int] = None
+    genres: Optional[Dict] = None
+    rating: Optional[str] = None
+    status: Optional[str] = None
+    studio: Optional[str] = None
+    MPAA: Optional[str] = None
+    duration: Optional[str] = None
+    type: Optional[str] = None
+    small_img: Optional[str] = None
+    big_img: Optional[str] = None
+    screens: Optional[Dict] = None
 
 class Title(TitleBase):
     id: str

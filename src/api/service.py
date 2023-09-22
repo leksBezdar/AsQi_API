@@ -60,6 +60,26 @@ class TitleCRUD:
         return titles
     
     
+    async def update_title(self, title_id, title_in: schemas.TitleUpdate):
+        
+        title = await self.get_existing_title(title_id=title_id)
+        
+        if not title: 
+            raise exceptions.TitleWasNotFound
+        
+        
+        obj_in = schemas.TitleUpdate(**title_in.model_dump())
+        
+        title_update = await TitleDAO.update(
+                self.db,
+                Title.id == title_id,
+                obj_in=obj_in)
+        
+        await self.db.commit()
+        
+        return title_update
+    
+    
     async def delete_title(self, title_id: str = None, title_name: str = None):
         
         if not title_id and not title_name:

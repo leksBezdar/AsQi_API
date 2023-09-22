@@ -128,3 +128,16 @@ async def delete_episode(
         episode_number=episode_number,
         episode_title=episode_title
         )
+    
+    
+@router.put("/update_title", response_model=None)
+async def update_title(
+    title_id: str,
+    title_data: schemas.TitleUpdate,
+    db: AsyncSession = Depends(get_async_session),
+):
+    
+    db_manager = DatabaseManager(db)
+    title_crud = db_manager.title_crud
+    
+    return await title_crud.update_title(title_id=title_id, title_in=title_data)
