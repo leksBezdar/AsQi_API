@@ -85,6 +85,12 @@ def upgrade() -> None:
         sa.Column('user_id', sa.String(), sa.ForeignKey('users.id', ondelete='CASCADE'), nullable=False),
         sa.PrimaryKeyConstraint('id'),
     )
+    
+    op.create_table(
+        'messages',
+        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('message', sa.String(), nullable=False)
+    )
 
 
     # ### end Alembic commands ###
@@ -97,4 +103,5 @@ def downgrade() -> None:
     op.drop_table('refresh_tokens')
     op.drop_table('users')
     op.drop_table('roles')
+    op.drop_table('messages')
     # ### end Alembic commands ###

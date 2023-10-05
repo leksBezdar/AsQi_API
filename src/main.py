@@ -4,6 +4,8 @@ from fastapi.responses import HTMLResponse
 
 from src.api.routers import router as anime_router
 from src.auth.routers import router as auth_router
+from src.chat.routers import router as chat_router
+from src.pages.routers import router as page_router
 
 app = FastAPI(
     title='AsQi'
@@ -11,6 +13,8 @@ app = FastAPI(
 
 app.include_router(anime_router, tags=["titles"])
 app.include_router(auth_router, tags=["registration"])
+app.include_router(chat_router, tags=["chat"])
+app.include_router(page_router, tags=["pages"])
 
 
 origins = [
