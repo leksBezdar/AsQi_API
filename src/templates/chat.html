@@ -37,12 +37,28 @@
         messages.appendChild(message)
     }
 
-    let client_id = Date.now()
-    document.querySelector("#ws-id").textContent = client_id;
-    let ws = new WebSocket(`ws://localhost:8000/chat/ws/${client_id}`);
-    ws.onmessage = function (event) {
-        appendMessage(event.data)
-    };
+    async function getClientId() {
+        const url = 'http://localhost:8000/me';
+        const response = await fetch(url, {
+          method: 'GET',
+        });
+        const userData = await response.json();
+        return userData.username;
+      }
+      
+      getClientId()
+        .then(client_id => {
+          document.querySelector("#ws-id").textContent = client_id;
+          let ws = new WebSocket(`ws://localhost:8000/chat/ws/${client_id}`);
+          ws.onmessage = function (event) {
+            appendMessage(event.data)
+          };
+        })
+        .catch(error => {
+          console.error('Ошибка при получении client_id: ' + error.message);
+        });
+      
+      
 
     function sendMessage(event) {
         let input = document.getElementById("messageText")

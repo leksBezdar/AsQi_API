@@ -21,6 +21,7 @@ origins = [
     "http://localhost",
     "http://localhost:5173",
     "https://anime-blush.vercel.app/",
+    "*"
 ]
 
 # Добавление middleware для CORS

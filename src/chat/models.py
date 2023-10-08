@@ -6,5 +6,6 @@ from ..database import Base
 class Messages(Base):
     __tablename__ = "messages"
 
-    id = Column(Integer, primary_key=True)
+    user_id = Column(String, primary_key=True)
+    chat_id = Column(Integer, unique=True)
     message = Column(String)

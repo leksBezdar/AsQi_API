@@ -88,7 +88,8 @@ def upgrade() -> None:
     
     op.create_table(
         'messages',
-        sa.Column('id', sa.Integer(), primary_key=True),
+        sa.Column('user_id', sa.String(), primary_key=True),
+        sa.Column('chat_id', sa.Integer(), unique=True),
         sa.Column('message', sa.String(), nullable=False)
     )
 

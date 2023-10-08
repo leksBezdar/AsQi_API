@@ -52,7 +52,7 @@ manager = ConnectionManager()
 async def get_last_messages(
         session: AsyncSession = Depends(get_async_session),
 ) -> List[MessagesModel]:
-    query = select(Messages).order_by(Messages.id.desc()).limit(5)
+    query = select(Messages).order_by(Messages.chat_id.desc()).limit(5)
     messages = await session.execute(query)
     return messages.scalars().all()
 
