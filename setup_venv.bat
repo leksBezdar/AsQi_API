@@ -7,6 +7,9 @@ call venv\Scripts\activate
 rem Установка зависимостей из файла requirements.txt
 pip install -r requirements.txt
 
+rem Миграции
+alembic upgrade head
+
 rem Запуск сервера uvicorn
 uvicorn src.main:app --reload
 
